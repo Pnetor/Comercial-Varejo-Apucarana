@@ -38,6 +38,20 @@ REPO_INDEX_PATH = "index.html"
 REPO_PRECOS_PATH = "tabela-precos.html"
 REPO_PEDIDOS_PATH = "pedidos-em-aberto.html"
 
+# ── Onde criar um card novo quando o código não existe ainda no HTML ──
+# Mapeia prefixo do código -> (data-section, texto do group-label onde entra)
+# Só prefixos sem ambiguidade entram aqui (ver NOVOS_CARDS_AMBIGUOS abaixo).
+NOVO_CARD_DESTINO = {
+    "COMPRO": ("alimentos", "ALIMENTOS"),
+}
+# Prefixos que aparecem em mais de uma seção/grupo no site (ex: FRASCANMI
+# tanto em Resfriados quanto em Congelados) - não criamos card sozinho
+# aqui, só avisamos no log para decidir manualmente uma vez.
+PREFIXOS_AMBIGUOS = (
+    "FRASCANMI", "FRCSCANMI", "FRPTCANMI", "FRINCANMI", "FRMDCANMI",
+    "FRMSCANMI", "FRPEMIFME", "FRSACANMI", "FRMRCANMI", "PEFLCANMI",
+)
+
 
 def baixar_csv(url):
     resp = requests.get(url)
@@ -82,9 +96,12 @@ def carregar_validades(csv_text):
 
 
 def carregar_saldos(csv_text):
+    """Retorna tanto os saldos quanto os dados brutos (nome, tp) de cada
+    código, para permitir criar cards novos quando necessário."""
     reader = csv.reader(StringIO(csv_text))
     rows = list(reader)
     data = {}
+    linhas_brutas = {}
     # linha 0 = título da planilha, linha 1 = cabeçalho, dados a partir da linha 2
     for r in rows[2:]:
         if not r or not r[0]:
@@ -95,7 +112,8 @@ def carregar_saldos(csv_text):
         except (ValueError, IndexError):
             disponivel = 0
         data[codigo] = disponivel
-    return data
+        linhas_brutas[codigo] = r
+    return data, linhas_brutas
 
 
 def fmt_kg(v):
@@ -110,8 +128,161 @@ def fmt_kg(v):
     return ("-" if neg else "") + s + " kg"
 
 
-def atualizar_html(html, data, validades=None):
+def slug_nome(nome):
+    """Nome do produto em Title Case simples, a partir da Descricao do ERP
+    (que normalmente vem toda em maiúsculas)."""
+    nome = nome.strip()
+    palavras_minusculas = {"de", "da", "do", "das", "dos", "e", "c/", "s/", "a", "com"}
+    partes = nome.split(" ")
+    out = []
+    for i, p in enumerate(partes):
+        if i > 0 and p.lower() in palavras_minusculas:
+            out.append(p.lower())
+        else:
+            out.append(p.capitalize() if p.isupper() or p.islower() else p)
+    return " ".join(out)
+
+
+_TAG_RE = re.compile(r"<div\b|</div>")
+
+
+def _find_matching_div_end(html, div_start):
+    """Dado o índice onde começa uma tag <div ...>, encontra o índice logo
+    após o </div> que fecha ela (contando divs aninhadas). Retorna -1 se
+    não achar (HTML malformado)."""
+    primeiro_fechamento_tag = html.find(">", div_start)
+    if primeiro_fechamento_tag == -1:
+        return -1
+    pos = primeiro_fechamento_tag + 1
+    profundidade = 1
+    for m in _TAG_RE.finditer(html, pos):
+        if m.group(0) == "<div":
+            profundidade += 1
+        else:
+            profundidade -= 1
+            if profundidade == 0:
+                return m.end()
+    return -1
+
+
+def montar_card_novo_html(codigo, nome_produto, peso_cx, cod_cancao, saldo):
+    """Monta o HTML de um card novo, no mesmo formato dos existentes."""
+    nome_fmt = slug_nome(nome_produto)
+    nome_esc = nome_fmt.replace('"', "&quot;")
+    status = "available" if saldo and saldo > 0 else "no-stock"
+    stock_html = (
+        f'<div class="card-stock"><div class="stock-kg">{fmt_kg(saldo)}</div></div>'
+        if status == "available" else
+        '<div class="card-stock"><div class="no-stock-tag">SEM ESTOQUE</div></div>'
+    )
+    peso_txt = f"Cx {peso_cx} kg" if peso_cx else ""
+    cancao_txt = cod_cancao if cod_cancao else "—"
+    return (
+        f'<div class="card {status}" data-name="{nome_esc}" data-section="alimentos" data-status="{status}">'
+        f'<div class="card-info"><div class="card-name">{nome_esc}</div>'
+        f'<div class="card-code">{codigo} · {peso_txt}</div>'
+        f'<div class="card-cancao">Cód. Canção: {cancao_txt}</div></div>'
+        f'{stock_html}</div>\n      '
+    )
+
+
+def inserir_cards_novos(html, data, linhas_brutas):
+    """Para códigos que estão na planilha mas não têm card nenhum no HTML,
+    cria o card automaticamente (só para prefixos sem ambiguidade, hoje
+    apenas COMPRO -> Alimentos Preparados / grupo ALIMENTOS). Prefixos
+    ambíguos (FR...) só geram um aviso no log."""
+    codigos_existentes = set(re.findall(r'card-code">([^<· ]+)', html))
+
+    codigos_novos = [c for c in data.keys() if c not in codigos_existentes]
+    if not codigos_novos:
+        return html, []
+
+    avisos = []
+    inseridos = []
+
+    for codigo in codigos_novos:
+        destino = None
+        for prefixo, dest in NOVO_CARD_DESTINO.items():
+            if codigo.startswith(prefixo):
+                destino = dest
+                break
+
+        if destino is None:
+            if codigo.startswith(PREFIXOS_AMBIGUOS):
+                avisos.append(
+                    f"código novo '{codigo}' não tem card e o prefixo é ambíguo "
+                    f"(pode ser Resfriados ou Congelados) - card NÃO foi criado "
+                    f"automaticamente, precisa adicionar manualmente uma vez."
+                )
+            else:
+                avisos.append(
+                    f"código novo '{codigo}' não tem card e o prefixo não é "
+                    f"reconhecido - card NÃO foi criado automaticamente."
+                )
+            continue
+
+        secao, grupo_label = destino
+        linha = linhas_brutas.get(codigo, [])
+        nome_produto = linha[3] if len(linha) > 3 else codigo
+        # tenta achar o "peso de caixa" a partir da descrição, ex: "... CX 4,2 KG"
+        m_peso = re.search(r"CX\s+([\d,.]+)\s*KG", nome_produto, re.I)
+        peso_cx = m_peso.group(1).replace(".", ",") if m_peso else ""
+        saldo = data.get(codigo, 0)
+
+        card_html = montar_card_novo_html(codigo, nome_produto, peso_cx, "", saldo)
+
+        # Acha a seção certa, depois o group-label certo DENTRO dela, depois
+        # a div "cards" logo em seguida - usando contagem de divs balanceada
+        # (regex simples falha com divs aninhadas do mesmo nome).
+        inserido_ok = False
+        secao_start = html.find(f'data-section="{secao}"')
+        if secao_start != -1:
+            # recua até o "<div class="section"" que contém esse data-section
+            secao_div_start = html.rfind('<div class="section"', 0, secao_start)
+            secao_end = _find_matching_div_end(html, secao_div_start)
+            if secao_end != -1:
+                bloco_secao = html[secao_div_start:secao_end]
+                grupo_idx = bloco_secao.find(f'<div class="group-label">{grupo_label}</div>')
+                if grupo_idx != -1:
+                    cards_div_start = bloco_secao.find('<div class="cards">', grupo_idx)
+                    if cards_div_start != -1:
+                        cards_div_end = _find_matching_div_end(bloco_secao, cards_div_start)
+                        if cards_div_end != -1:
+                            # cards_div_end aponta logo apos o "</div>" de fechamento;
+                            # insere o novo card imediatamente antes desse "</div>".
+                            ponto_insercao = cards_div_end - len("</div>")
+                            novo_bloco_secao = (
+                                bloco_secao[:ponto_insercao]
+                                + card_html
+                                + bloco_secao[ponto_insercao:]
+                            )
+                            html = html[:secao_div_start] + novo_bloco_secao + html[secao_end:]
+                            inserido_ok = True
+
+        if inserido_ok:
+            inseridos.append(codigo)
+        else:
+            avisos.append(
+                f"código novo '{codigo}' seria criado em '{secao}/{grupo_label}' "
+                f"mas não encontrei esse grupo no HTML - card NÃO foi criado."
+            )
+
+    for a in avisos:
+        print("AVISO -", a)
+    if inseridos:
+        print(f"OK - {len(inseridos)} card(s) novo(s) criado(s) automaticamente: {', '.join(inseridos)}")
+
+    return html, inseridos
+
+
+def atualizar_html(html, data, validades=None, linhas_brutas=None):
     validades = validades or {}
+    linhas_brutas = linhas_brutas or {}
+
+    # ── Cria cards novos ANTES de atualizar os existentes, para que o saldo
+    # do card recém-criado já seja processado no mesmo ciclo. ──
+    html, _ = inserir_cards_novos(html, data, linhas_brutas)
+
     card_starts = [m.start() for m in re.finditer(r'<div class="card[^"]*" data-name=', html)]
     card_starts.append(len(html))
 
@@ -417,7 +588,7 @@ def atualizar_pedidos_html(html, novos_dados):
 
 def main():
     csv_text = baixar_csv(CSV_URL)
-    data = carregar_saldos(csv_text)
+    data, linhas_brutas = carregar_saldos(csv_text)
 
     validades = {}
     if VALIDADES_CSV_URL:
@@ -427,7 +598,7 @@ def main():
     with open(REPO_INDEX_PATH, encoding="utf-8") as f:
         html = f.read()
 
-    new_html = atualizar_html(html, data, validades)
+    new_html = atualizar_html(html, data, validades, linhas_brutas)
 
     with open(REPO_INDEX_PATH, "w", encoding="utf-8") as f:
         f.write(new_html)
