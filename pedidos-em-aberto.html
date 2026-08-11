@@ -400,7 +400,8 @@ function abrirDetalhe(nome){
   var totalKg = 0;
   v.pedidos.forEach(function(p){
     p.produtos.forEach(function(prod){
-      totalKg += (prod.qtd_liberada_total || 0);
+      var saldoSemGestao = parseFloat(String(prod.saldo_sem_gestao || '0').replace(',', '.')) || 0;
+      totalKg += (prod.qtd_liberada_total || 0) + saldoSemGestao;
     });
   });
   var totalKgFmt = totalKg.toLocaleString('pt-BR', {minimumFractionDigits: totalKg % 1 === 0 ? 0 : 2, maximumFractionDigits: 2});
