@@ -548,17 +548,36 @@ def carregar_pedidos(csv_text):
                     saldo_norm = str(int(saldo_val)) if saldo_val == int(saldo_val) else str(saldo_val).replace(".", ",")
                 except ValueError:
                     saldo_norm = saldo_sem_gestao
-            lista[chave_pedido]["produtos"].append({
-                "cod": cod_produto, "nome": nome_produto,
-                "qtd_liberada": ql, "qtd_liberada_total": qlt,
-                "peso_cx": peso_cx, "saldo_sem_gestao": saldo_norm,
-            })
+
+            produtos = lista[chave_pedido]["produtos"]
+            existente = next((p for p in produtos if p["cod"] == cod_produto), None)
+            if existente is None:
+                produtos.append({
+                    "cod": cod_produto, "nome": nome_produto,
+                    "qtd_liberada": ql, "qtd_liberada_total": qlt,
+                    "peso_cx": peso_cx, "saldo_sem_gestao": saldo_norm,
+                    "_ql_vistos": {ql},
+                })
+            else:
+                # Mesmo produto já apareceu neste pedido:
+                # - se essa qtd_liberada já foi vista antes, é linha duplicada
+                #   (erro de exportação do ERP) -> ignora, não soma de novo
+                # - se é uma qtd_liberada nova, é uma liberação parcial
+                #   adicional -> soma na quantidade liberada exibida
+                #   (qtd_liberada_total NÃO muda, é o mesmo total do pedido)
+                if ql not in existente["_ql_vistos"]:
+                    existente["_ql_vistos"].add(ql)
+                    existente["qtd_liberada"] += ql
 
     resultado = {}
     for vendedor, cod_vendedor in vendedores.items():
+        pedidos_lista = list(pedidos_por_vendedor[vendedor].values())
+        for p in pedidos_lista:
+            for prod in p["produtos"]:
+                prod.pop("_ql_vistos", None)
         resultado[vendedor] = {
             "cod_vendedor": cod_vendedor,
-            "pedidos": list(pedidos_por_vendedor[vendedor].values()),
+            "pedidos": pedidos_lista,
         }
     return resultado
 
