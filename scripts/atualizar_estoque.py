@@ -537,14 +537,21 @@ def carregar_pedidos(csv_text):
             }
         if cod_produto:
             try:
-                ql = float(qtd_liberada.replace(",", ".")) if qtd_liberada else 0
-                qlt = float(qtd_liberada_total.replace(",", ".")) if qtd_liberada_total else 0
+                ql = float(qtd_liberada.replace(".", "").replace(",", ".")) if qtd_liberada else 0
+                qlt = float(qtd_liberada_total.replace(".", "").replace(",", ".")) if qtd_liberada_total else 0
             except ValueError:
                 ql = qlt = 0
+            saldo_norm = saldo_sem_gestao
+            if saldo_sem_gestao:
+                try:
+                    saldo_val = float(str(saldo_sem_gestao).replace(".", "").replace(",", "."))
+                    saldo_norm = str(int(saldo_val)) if saldo_val == int(saldo_val) else str(saldo_val).replace(".", ",")
+                except ValueError:
+                    saldo_norm = saldo_sem_gestao
             lista[chave_pedido]["produtos"].append({
                 "cod": cod_produto, "nome": nome_produto,
                 "qtd_liberada": ql, "qtd_liberada_total": qlt,
-                "peso_cx": peso_cx, "saldo_sem_gestao": saldo_sem_gestao,
+                "peso_cx": peso_cx, "saldo_sem_gestao": saldo_norm,
             })
 
     resultado = {}
