@@ -334,10 +334,21 @@ def atualizar_html(html, data, validades=None, linhas_brutas=None):
     segments = []
     for i in range(len(card_starts) - 1):
         start, end = card_starts[i], card_starts[i + 1]
-        block = html[start:end]
+        # O "block" entre um card e o próximo pode conter, depois do
+        # fechamento do card, HTML estrutural (fechamento de grupo/seção,
+        # cabeçalho da próxima seção etc). Isolamos só o HTML do card em
+        # si (via contagem balanceada de divs) do "rastro" que vem depois,
+        # pra nunca apagar estrutura junto quando um card é removido.
+        card_own_end = _find_matching_div_end(html, start)
+        if card_own_end == -1 or card_own_end > end:
+            card_own_end = end
+        block = html[start:card_own_end]
+        rastro = html[card_own_end:end]
+
         m = re.search(r'card-code">([^<]+)</div>', block)
         if not m:
             segments.append(block)
+            segments.append(rastro)
             continue
         code = m.group(1).split("·")[0].strip()
 
@@ -374,6 +385,9 @@ def atualizar_html(html, data, validades=None, linhas_brutas=None):
             # o produto foi descontinuado/removido do ERP - o card some do
             # painel (não fica com o saldo antigo parado). Se o código
             # reaparecer numa planilha futura, o card é recriado automaticamente.
+            # O "rastro" (fechamentos de grupo/seção, próximo cabeçalho)
+            # é sempre preservado, mesmo quando o card é removido.
+            segments.append(rastro)
             continue
         val = data[code]
         was_nostock = 'data-status="no-stock"' in block
@@ -404,6 +418,7 @@ def atualizar_html(html, data, validades=None, linhas_brutas=None):
                 block, count=1, flags=re.S,
             )
         segments.append(block)
+        segments.append(rastro)
 
     new_html = html[: card_starts[0]] + "".join(segments)
 
