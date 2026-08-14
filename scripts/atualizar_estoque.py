@@ -39,18 +39,71 @@ REPO_PRECOS_PATH = "tabela-precos.html"
 REPO_PEDIDOS_PATH = "pedidos-em-aberto.html"
 
 # ── Onde criar um card novo quando o código não existe ainda no HTML ──
-# Mapeia prefixo do código -> (data-section, texto do group-label onde entra)
-# Só prefixos sem ambiguidade entram aqui (ver NOVOS_CARDS_AMBIGUOS abaixo).
-NOVO_CARD_DESTINO = {
-    "COMPRO": ("alimentos", "ALIMENTOS"),
-}
-# Prefixos que aparecem em mais de uma seção/grupo no site (ex: FRASCANMI
-# tanto em Resfriados quanto em Congelados) - não criamos card sozinho
-# aqui, só avisamos no log para decidir manualmente uma vez.
-PREFIXOS_AMBIGUOS = (
-    "FRASCANMI", "FRCSCANMI", "FRPTCANMI", "FRINCANMI", "FRMDCANMI",
-    "FRMSCANMI", "FRPEMIFME", "FRSACANMI", "FRMRCANMI", "PEFLCANMI",
-)
+# Prefixos sem ambiguidade: sempre vão para o mesmo lugar, não importa o texto.
+# Não existe prefixo de código que garanta a seção sozinho - até COMPRO
+# tem itens de Alimentos Preparados (ex: bolinhos, empanados) E itens de
+# Congelados (ex: galinha/galo inteiro). A classificação é sempre feita
+# lendo a descrição do produto, em classificar_produto_novo() abaixo.
+
+
+def _sem_acento(txt):
+    import unicodedata
+    return "".join(
+        c for c in unicodedata.normalize("NFD", txt)
+        if unicodedata.category(c) != "Mn"
+    )
+
+
+def classificar_produto_novo(nome_produto):
+    """Decide em qual seção/grupo do painel um produto novo deve entrar,
+    lendo palavras-chave do nome/descrição do ERP. A descrição é o único
+    sinal confiável - o prefixo/código NÃO indica a seção (ex: COMPRO tem
+    tanto "Galinha Inteira Congelada" -> Congelados/Inteiros quanto
+    "Sassami Empanado" -> Alimentos Preparados).
+    Retorna (secao, grupo_label) ou None se não conseguir decidir com
+    segurança (nesse caso o script só avisa no log, não cria o card)."""
+    nome = _sem_acento(nome_produto or "").upper()
+
+    # Alimentos Preparados: itens processados/prontos, mesmo que a
+    # descrição também diga "CONGELADO" (ex: batata congelada, empanados).
+    # Esse sinal tem prioridade sobre o corte de frango, porque um "Fut
+    # Chicken" ou uma "Lasanha" não são pedaços de frango in natura.
+    sinais_alimentos = (
+        "EMPANAD", "CHICKEN", "BATATA", "MANDIOCA", "POLENTA",
+        "ANEL DE CEBOLA", "PAO DE QUEIJO", "LASANHA", "TILAPIA", "PEIXE",
+        "FISH", "BURGUER", "BOLINHO", "WINGS", "NUGGET", "ISCA DE",
+        "HAMBURGUER", "STEAK", "NOISETTE",
+    )
+    if any(k in nome for k in sinais_alimentos):
+        return ("alimentos", "ALIMENTOS")
+
+    if "IQF" in nome:
+        return ("iqf", "IQF")
+
+    if "RESFR" in nome:
+        grupo = "BANDEJA" if ("BANDEJA" in nome or "BDJ" in nome) else "PACOTE"
+        return ("resfriados", grupo)
+
+    if "CONG" in nome:
+        eh_bandeja = "BANDEJA" in nome or "BDJ" in nome
+        if eh_bandeja:
+            return ("congelados", "GRUPO BANDEJA CONGELADA")
+        if any(k in nome for k in ("INTEIR", "GALINHA", "GALO", "CARCACA", "TEMPERAD")):
+            return ("congelados", "GRUPO INTEIROS")
+        if "ASA" in nome:
+            return ("congelados", "GRUPO ASA")
+        if any(k in nome for k in ("COXA", "SOBRECOXA", "PERNA", "DORSAL", "LEG QUARTER")):
+            return ("congelados", "GRUPO PERNA")
+        if any(k in nome for k in ("PEITO", "FILE", "FILEZINHO", "SASSAMI")):
+            return ("congelados", "GRUPO PEITO")
+        if any(k in nome for k in ("CORACAO", "FIGADO", "MOELA", "PESCOCO", "CMS",
+                                    "PES ", "SAMBIQUIRA", "MIUDO", "CARTILAGEM")):
+            return ("congelados", "GRUPO MIUDOS")
+        # é congelado mas o corte especifico nao bateu com nenhuma palavra-chave
+        return None
+
+    return None
+
 
 
 def baixar_csv(url):
@@ -165,7 +218,7 @@ def _find_matching_div_end(html, div_start):
     return -1
 
 
-def montar_card_novo_html(codigo, nome_produto, peso_cx, cod_cancao, saldo):
+def montar_card_novo_html(codigo, nome_produto, peso_cx, cod_cancao, saldo, secao):
     """Monta o HTML de um card novo, no mesmo formato dos existentes."""
     nome_fmt = slug_nome(nome_produto)
     nome_esc = nome_fmt.replace('"', "&quot;")
@@ -178,7 +231,7 @@ def montar_card_novo_html(codigo, nome_produto, peso_cx, cod_cancao, saldo):
     peso_txt = f"Cx {peso_cx} kg" if peso_cx else ""
     cancao_txt = cod_cancao if cod_cancao else "—"
     return (
-        f'<div class="card {status}" data-name="{nome_esc}" data-section="alimentos" data-status="{status}">'
+        f'<div class="card {status}" data-name="{nome_esc}" data-section="{secao}" data-status="{status}">'
         f'<div class="card-info"><div class="card-name">{nome_esc}</div>'
         f'<div class="card-code">{codigo} · {peso_txt}</div>'
         f'<div class="card-cancao">Cód. Canção: {cancao_txt}</div></div>'
@@ -188,9 +241,11 @@ def montar_card_novo_html(codigo, nome_produto, peso_cx, cod_cancao, saldo):
 
 def inserir_cards_novos(html, data, linhas_brutas):
     """Para códigos que estão na planilha mas não têm card nenhum no HTML,
-    cria o card automaticamente (só para prefixos sem ambiguidade, hoje
-    apenas COMPRO -> Alimentos Preparados / grupo ALIMENTOS). Prefixos
-    ambíguos (FR...) só geram um aviso no log."""
+    cria o card automaticamente. Prefixos fixos (COMPRO, PEFLCANMI) vão
+    direto para Alimentos Preparados; os demais são classificados pelo
+    texto da descrição do produto (RESFRIADA/CONGELADA/IQF + tipo de
+    corte). Só fica sem criar quando a descrição não dá pra classificar
+    com segurança - nesse caso o script avisa no log."""
     codigos_existentes = set(re.findall(r'card-code">([^<· ]+)', html))
 
     codigos_novos = [c for c in data.keys() if c not in codigos_existentes]
@@ -201,35 +256,25 @@ def inserir_cards_novos(html, data, linhas_brutas):
     inseridos = []
 
     for codigo in codigos_novos:
-        destino = None
-        for prefixo, dest in NOVO_CARD_DESTINO.items():
-            if codigo.startswith(prefixo):
-                destino = dest
-                break
+        linha = linhas_brutas.get(codigo, [])
+        nome_produto = linha[3] if len(linha) > 3 else codigo
+
+        destino = classificar_produto_novo(nome_produto)
 
         if destino is None:
-            if codigo.startswith(PREFIXOS_AMBIGUOS):
-                avisos.append(
-                    f"código novo '{codigo}' não tem card e o prefixo é ambíguo "
-                    f"(pode ser Resfriados ou Congelados) - card NÃO foi criado "
-                    f"automaticamente, precisa adicionar manualmente uma vez."
-                )
-            else:
-                avisos.append(
-                    f"código novo '{codigo}' não tem card e o prefixo não é "
-                    f"reconhecido - card NÃO foi criado automaticamente."
-                )
+            avisos.append(
+                f"código novo '{codigo}' ({nome_produto}) não tem card e a "
+                f"descrição não deu pra classificar com segurança - card "
+                f"NÃO foi criado automaticamente, precisa adicionar manualmente uma vez."
+            )
             continue
 
         secao, grupo_label = destino
-        linha = linhas_brutas.get(codigo, [])
-        nome_produto = linha[3] if len(linha) > 3 else codigo
-        # tenta achar o "peso de caixa" a partir da descrição, ex: "... CX 4,2 KG"
         m_peso = re.search(r"CX\s+([\d,.]+)\s*KG", nome_produto, re.I)
         peso_cx = m_peso.group(1).replace(".", ",") if m_peso else ""
         saldo = data.get(codigo, 0)
 
-        card_html = montar_card_novo_html(codigo, nome_produto, peso_cx, "", saldo)
+        card_html = montar_card_novo_html(codigo, nome_produto, peso_cx, "", saldo, secao)
 
         # Acha a seção certa, depois o group-label certo DENTRO dela, depois
         # a div "cards" logo em seguida - usando contagem de divs balanceada
@@ -325,7 +370,10 @@ def atualizar_html(html, data, validades=None, linhas_brutas=None):
             )
 
         if code not in data:
-            segments.append(block)
+            # Regra: se o código não aparece mais na planilha de estoque,
+            # o produto foi descontinuado/removido do ERP - o card some do
+            # painel (não fica com o saldo antigo parado). Se o código
+            # reaparecer numa planilha futura, o card é recriado automaticamente.
             continue
         val = data[code]
         was_nostock = 'data-status="no-stock"' in block
