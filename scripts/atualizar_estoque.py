@@ -643,6 +643,30 @@ def atualizar_html(html, data, validades=None, linhas_brutas=None):
             continue
         code = m.group(1).split("·")[0].strip()
 
+        # ── Autocorreção: nome e Cód. Canção sempre seguem as listas fixas
+        # (NOME_CANONICO / COD_CANCAO_FIXO), mesmo em cards que já existiam
+        # antes dessas listas serem criadas - corrige uma vez e pra sempre. ──
+        if code in NOME_CANONICO:
+            nome_certo = NOME_CANONICO[code]
+            nome_certo_esc = nome_certo.replace('"', "&quot;")
+            block = re.sub(
+                r'(<div class="card[^"]*" data-name=")[^"]*(")',
+                lambda m2: m2.group(1) + nome_certo_esc + m2.group(2),
+                block, count=1,
+            )
+            block = re.sub(
+                r'(<div class="card-name">)[^<]*(</div>)',
+                lambda m2: m2.group(1) + nome_certo_esc + m2.group(2),
+                block, count=1,
+            )
+        if code in COD_CANCAO_FIXO:
+            cancao_certo = COD_CANCAO_FIXO[code]
+            block = re.sub(
+                r'(<div class="card-cancao">Cód\. Canção: )[^<]*(</div>)',
+                lambda m2: m2.group(1) + cancao_certo + m2.group(2),
+                block, count=1,
+            )
+
         # ── Gerencia o botão "ver validades" independente do estoque ──
         tem_validade = code in validades and validades[code].get("entries")
         tem_botao = bool(re.search(r'<button class="val-btn[^"]*"[^>]*data-code="' + re.escape(code) + r'"', block))
