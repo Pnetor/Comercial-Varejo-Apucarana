@@ -552,7 +552,7 @@ function abrirDetalhe(nome){
             <div class="num">Pedido ${p.pedido} · ${p.data_pedido}</div>
           </div>
           <div class="cliente">${p.razao_social || p.cliente_loja}</div>
-          <div class="cidade">${p.cidade}${p.uf ? '/'+p.uf : ''} · Entrega: ${p.dt_entrega || '—'}</div>
+          <div class="cidade">${p.cidade}${p.uf ? '/'+p.uf : ''} · Carregamento: ${p.dt_carregamento || '—'}</div>
         </div>
         <div class="right">
           <div class="valor">R$ ${formatBRL(p.vl_total_pedido)}</div>
