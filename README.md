@@ -1,4 +1,4 @@
-[README.md](https://github.com/user-attachments/files/31432123/README.md)
+[README.md](https://github.com/user-attachments/files/31436092/README.md)
 # Comercial-Varejo-Apucarana
 
 ## Classificação automática de itens novos
@@ -72,6 +72,30 @@ botão de **copiar** que gera um bloco de texto pronto (`NOME_CANONICO` /
 `COD_CANCAO_FIXO` etc.) pra colar direto no topo do `atualizar_estoque.py`
 e commitar - assim a correção vale pra sempre, pra qualquer pessoa que
 abrir o painel, e não só no navegador de quem editou.
+
+## Botão "🚚 programação" (programação de cargas)
+
+Cada card do estoque pode mostrar um botão **"🚚 programação"** com as
+cargas em trânsito/programadas daquele produto especificamente (data de
+carregamento, status, NF, placa, pedido, Kg programado/faturado). Os dados
+vêm de uma segunda planilha (a de programação de cargas, publicada como CSV
+na secret opcional `GSHEET_PROGRAMACAO_CSV_URL`), cruzada com o estoque pela
+coluna **Código Protheus** (o mesmo código que já aparece no card, ex:
+`FRCSCANMI000011`). O botão só aparece nos produtos que realmente têm
+alguma linha de programação - sem essa secret configurada, o painel
+funciona normalmente, só sem esse botão.
+
+## E-mails Padrão
+
+A aba **"📧 Emails"** (`emails-padrao.html`) reúne modelos prontos de
+e-mail que os vendedores usam no dia a dia (prioridade de cadastro,
+bonificação, cadastro de forma de pagamento, baixa de título, troca de
+produto/reclamação, abertura de ocorrência, programação de cargas). O
+vendedor escolhe o modelo, preenche um formulário curto na própria página e
+o e-mail já abre pronto no cliente de e-mail dele, com destinatários,
+assunto, corpo e cópia (geralmente o supervisor) preenchidos - sem precisar
+digitar nada manualmente. Pra adicionar um novo modelo, basta incluir um
+objeto na lista `TEMPLATES` dentro do `<script>` de `emails-padrao.html`.
 
 ## PWA (instalável)
 
