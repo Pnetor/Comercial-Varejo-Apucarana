@@ -31,6 +31,11 @@ jobs:
           GSHEET_VALIDADES_CSV_URL: ${{ secrets.GSHEET_VALIDADES_CSV_URL }}
           GSHEET_PRECOS_CSV_URL: ${{ secrets.GSHEET_PRECOS_CSV_URL }}
           GSHEET_PEDIDOS_CSV_URL: ${{ secrets.GSHEET_PEDIDOS_CSV_URL }}
+          # Opcional: só é usada como fallback pra classificar item novo cuja
+          # descrição não bate com nenhuma palavra-chave conhecida. Sem essa
+          # secret, o script funciona normalmente (o item cai direto em
+          # "Não Classificados" nesse caso).
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python scripts/atualizar_estoque.py
 
       - name: Commit e push se houve mudança
