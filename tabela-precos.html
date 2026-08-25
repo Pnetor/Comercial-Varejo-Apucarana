@@ -831,7 +831,7 @@ body{background-image:radial-gradient(circle at 8% 10%,rgba(255,73,28,.07),trans
 .card.new-item .name,.card-1.new-item .name,.card-2.new-item .name{display:block;font-weight:700;margin-bottom:3px}
 .card.new-item .p,.card-1.new-item .p,.card-2.new-item .p{display:inline-block;margin-right:12px}
 .new-item-badge{display:inline-flex;align-items:center;gap:4px;margin-bottom:6px;padding:2px 8px;border-radius:999px;background:#c08a2e;color:#fff;font-size:10px;font-weight:800;letter-spacing:.4px}
-.card.new-item.dismissed .new-item-badge,.card-1.new-item.dismissed .new-item-badge,.card-2.new-item.dismissed .new-item-badge{display:none}
+.card.new-item.dismissed .new-item-badge,.card-1.new-item.dismissed .new-item-badge,.card-2.new-item.dismissed .new-item-badge,.card.new-item.dismissed .new-item-actions,.card-1.new-item.dismissed .new-item-actions,.card-2.new-item.dismissed .new-item-actions{display:none}
 .new-item-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .new-item-actions button{font:inherit;font-size:11px;font-weight:700;padding:5px 9px;border-radius:8px;border:1px solid var(--line);background:var(--white);color:var(--ink);cursor:pointer}
 .new-item-actions button:hover{background:var(--cream)}
@@ -881,7 +881,7 @@ body{background-image:radial-gradient(circle at 8% 10%,rgba(255,73,28,.07),trans
       </button>
     </div>
   </div>
-  <div class="validity-badge">📅 Válida até 28/08/2026</div>
+  <div class="validity-badge">📅 Válida até 21/08/2026</div>
   <div class="offline-badge">✓ Funciona sem internet</div>
 </div>
 <div class="expired-banner" id="expiredBanner">⚠️ Esta tabela venceu — solicite a versão atualizada</div>
@@ -946,7 +946,7 @@ body{background-image:radial-gradient(circle at 8% 10%,rgba(255,73,28,.07),trans
   <div class="section-body">
     <div class="col-hdr-2 priority-hdr"><span>Produto</span><span>R$/KG</span><span>R$/Bdj</span></div>
     <div class="card-2 priority-card" data-sec="resfBdj" data-name="coxa pilão resfriado bandeja"><span class="name priority-name">Coxa Pilão</span><span class="p main green">7,99</span><span class="p">5,91</span></div>
-    <div class="card-2 priority-card" data-sec="resfBdj" data-name="sobrecoxa resfriado bandeja"><span class="name priority-name">Sobrecoxa</span><span class="p main green">10,50</span><span class="p">9,14</span></div>
+    <div class="card-2 priority-card" data-sec="resfBdj" data-name="sobrecoxa resfriado bandeja"><span class="name priority-name">Sobrecoxa</span><span class="p main green">10,50</span><span class="p">9,13</span></div>
     <div class="card-2 priority-card" data-sec="resfBdj" data-name="coxinha da asa resfriado bandeja"><span class="name priority-name">Coxinha da Asa</span><span class="p main green">10,50</span><span class="p">7,35</span></div>
     <div class="card-2 priority-card" data-sec="resfBdj" data-name="meio da asa resfriado bandeja"><span class="name priority-name">Meio da Asa</span><span class="p main green">21,50</span><span class="p">15,05</span></div>
     <div class="card-2 priority-card" data-sec="resfBdj" data-name="filé de peito resfriado bandeja"><span class="name priority-name">Filé de Peito</span><span class="p main green">14,99</span><span class="p">11,24</span></div>
@@ -1014,7 +1014,7 @@ body{background-image:radial-gradient(circle at 8% 10%,rgba(255,73,28,.07),trans
     <div class="card" data-sec="peito" data-name="sassami bandeja 1kg"><span class="name">Sassami Bandeja 1KG</span><span class="p main">14,10</span><span class="p">14,00</span><span class="p">13,90</span></div>
     <div class="card" data-sec="peito" data-name="sassami grade b pct 10kg"><span class="name">Sassami "Grade B" Pct 10KG</span><span class="p main">12,20</span><span class="p">12,10</span><span class="p">12,00</span></div>
     <div class="card" data-sec="peito" data-name="peito com osso"><span class="name">Peito com Osso</span><span class="p main">9,80</span><span class="p">9,70</span><span class="p">9,60</span></div>
-  <div class="card" data-sec="peito" data-name="filezinho sassami ind ou 1kg"><span class="name">Filezinho Sassami Ind Ou 1kg</span><span class="p main">13,40</span><span class="p">13,30</span><span class="p">13,20</span></div><div class="card" data-sec="peito" data-name="file meio peito indiv ou pct 1kg"><span class="name">File Meio Peito Indiv Ou Pct 1kg</span><span class="p main">13,70</span><span class="p">13,60</span><span class="p">13,50</span></div></div>
+  </div>
 </div>
 
 <!-- ═══ ASA ═══ -->
@@ -1333,7 +1333,7 @@ function toggleTheme() {
 }
 
 // ── SETAS DE VARIAÇÃO DE PREÇO (vs mês anterior) ──
-var PRICE_TREND = {"coxa pilão resfriado bandeja": "same", "sobrecoxa resfriado bandeja": "same", "coxinha da asa resfriado bandeja": "same", "meio da asa resfriado bandeja": "same", "filé de peito resfriado bandeja": "same", "sassami resfriado bandeja": "same", "frango inteiro resfriado individual": "same", "coxa e sobrecoxa resfriado individual": "same", "coxinha da asa resfriado individual": "same", "filé de peito resfriado individual": "same", "coração resfriado individual": "same", "moela resfriado individual": "same", "sobrecoxa resfriado individual": "same", "peito c/ osso resfriado individual": "same", "asa inteira resfriado individual": "same", "frango inteiro": "same", "frango sem miúdos carcaça": "same", "galo inteiro": "same", "galinha inteira": "same", "ave natalina": "same", "coxa pilão interfolhada": "same", "coxa pilão bandeja 1kg": "same", "coxa e sobrecoxa c/ dorsal": "same", "coxa e sobrecoxa": "same", "coxa e sob passarinho 10kg": "same", "filé de coxa c/ sobrecoxa": "same", "filé de peito": "same", "filé de peito interfolhado": "same", "filé de peito bandeja 1kg": "same", "recorte filé peito file coxa": "same", "file meio peito 1kg": "same", "filé grade b pct 10kg": "same", "filezinho sassami ind 1kg": "same", "sassami bandeja 1kg": "same", "sassami grade b pct 10kg": "same", "peito com osso": "same", "asa inteira pct": "same", "coxinha da asa": "same", "coxinha da asa bandeja 1kg": "same", "meio da asa interf": "same", "meio da asa pct 10kg": "same", "coração 600g bandeja": "same", "coração 1kg": "same", "fígado 1kg": "same", "moela 1kg": "same", "pés": "same", "pescoço 1kg": "same", "sambiquira 1kg": "same", "cms": "same", "coxa pilão 1kg iqf": "same", "coxa sob passarinho 1kg iqf": "same", "sobrecoxa 1kg iqf": "same", "coxinha da asa 1kg iqf": "same", "meio da asa 1kg iqf": "same", "filé de peito em bife 1kg iqf": "same", "filezinho sassami 1kg iqf": "same", "filé meio peito 1kg iqf": "same", "filé de sobrecoxa 1kg iqf": "same", "pão de queijo canção 300gr": "same", "pão de queijo canção 800gr": "same", "filezinho empanado canção 700gr": "same", "filezinho empanado canção 1kg": "same", "chicken empanado canção 300gr": "same", "chicken empanado canção 1kg": "same", "futchicken empanado canção 300g": "same", "futchicken empanado canção 1kg": "same", "lasanha bolonhesa 600g": "same", "lasanha quatro queijos 600g": "same", "lasanha frango 600g": "same", "tilápia canção 400gr": "same", "tilápia canção 800gr": "same", "tilápia em pedaços 6kg": "same", "iscas de tilápia empanada 400gr": "same", "filé de tilápia empanada 600gr": "same", "bolinho de tilápia 300g": "same", "small fish 400g": "same", "small fish 1,5kg": "same", "batata canção 400gr": "same", "batata canção 1,1kg": "same", "batata canção 2kg": "same", "batata noisete 400g": "same", "aneís de cebola 1,1kg cx 11kg": "same", "aneís de cebola 1,1kg cx 6,6kg": "same", "mandioca 1kg": "same", "polenta 1kg": "same", "futburguer picles": "same", "futburguer requeijão bacon": "same", "futburguer maionese grill": "same", "futchicken queijo": "same", "futchicken tradicional": "same", "fut wings trad coxinha empanada": "same", "fut wings apim coxinha empanada": "same", "filezinho sassami ind ou 1kg": "same", "file meio peito indiv ou pct 1kg": "same"};
+var PRICE_TREND = {"coxa pilão resfriado bandeja": "same", "sobrecoxa resfriado bandeja": "same", "coxinha da asa resfriado bandeja": "same", "meio da asa resfriado bandeja": "same", "filé de peito resfriado bandeja": "same", "sassami resfriado bandeja": "same", "frango inteiro resfriado individual": "up", "coxa e sobrecoxa resfriado individual": "same", "coxinha da asa resfriado individual": "same", "filé de peito resfriado individual": "same", "coração resfriado individual": "same", "moela resfriado individual": "same", "sobrecoxa resfriado individual": "same", "peito c/ osso resfriado individual": "same", "asa inteira resfriado individual": "same", "frango inteiro": "up", "frango sem miúdos carcaça": "same", "galo inteiro": "up", "galinha inteira": "up", "ave natalina": "same", "coxa pilão interfolhada": "same", "coxa pilão bandeja 1kg": "same", "coxa e sobrecoxa c/ dorsal": "same", "coxa e sobrecoxa": "same", "coxa e sob passarinho 10kg": "same", "filé de coxa c/ sobrecoxa": "same", "filé de peito": "same", "filé de peito interfolhado": "same", "filé de peito bandeja 1kg": "same", "recorte filé peito file coxa": "same", "file meio peito 1kg": "same", "filé grade b pct 10kg": "same", "filezinho sassami ind 1kg": "same", "sassami bandeja 1kg": "same", "sassami grade b pct 10kg": "same", "peito com osso": "same", "asa inteira pct": "same", "coxinha da asa": "same", "coxinha da asa bandeja 1kg": "same", "meio da asa interf": "same", "meio da asa pct 10kg": "same", "coração 600g bandeja": "same", "coração 1kg": "same", "fígado 1kg": "same", "moela 1kg": "same", "pés": "same", "pescoço 1kg": "same", "sambiquira 1kg": "same", "cms": "same", "coxa pilão 1kg iqf": "same", "coxa sob passarinho 1kg iqf": "up", "sobrecoxa 1kg iqf": "same", "coxinha da asa 1kg iqf": "up", "meio da asa 1kg iqf": "up", "filé de peito em bife 1kg iqf": "up", "filezinho sassami 1kg iqf": "up", "filé meio peito 1kg iqf": "same", "filé de sobrecoxa 1kg iqf": "same", "pão de queijo canção 300gr": "same", "pão de queijo canção 800gr": "same", "filezinho empanado canção 700gr": "same", "filezinho empanado canção 1kg": "same", "chicken empanado canção 300gr": "same", "chicken empanado canção 1kg": "same", "futchicken empanado canção 300g": "same", "futchicken empanado canção 1kg": "same", "lasanha bolonhesa 600g": "same", "lasanha quatro queijos 600g": "same", "lasanha frango 600g": "same", "tilápia canção 400gr": "same", "tilápia canção 800gr": "same", "tilápia em pedaços 6kg": "same", "iscas de tilápia empanada 400gr": "same", "filé de tilápia empanada 600gr": "same", "bolinho de tilápia 300g": "same", "small fish 400g": "same", "small fish 1,5kg": "same", "batata canção 400gr": "same", "batata canção 1,1kg": "same", "batata canção 2kg": "same", "batata noisete 400g": "same", "aneís de cebola 1,1kg cx 11kg": "same", "aneís de cebola 1,1kg cx 6,6kg": "same", "mandioca 1kg": "same", "polenta 1kg": "same", "futburguer picles": "same", "futburguer requeijão bacon": "same", "futburguer maionese grill": "same", "futchicken queijo": "same", "futchicken tradicional": "same", "fut wings trad coxinha empanada": "same", "fut wings apim coxinha empanada": "same"};
 
 function applyTrends() {
   document.querySelectorAll('[data-name]').forEach(function(card) {
@@ -1608,6 +1608,20 @@ document.addEventListener('click', function(e) {
   var CHAVE_VISTOS = 'precos_novos_vistos';
   var CHAVE_PENDENCIAS = 'precos_pendencias';
   var SUFIXO_POR_DATA_SEC = { resfBdj: ' resfriado bandeja', resfInd: ' resfriado individual' };
+  // Senha só pra evitar que qualquer pessoa que abra o site no navegador
+  // mexa nisso - fica escrita aqui no HTML, então não é segurança de
+  // verdade (dá pra ver no código-fonte), é só uma trava simples.
+  var SENHA_ADMIN = '0000';
+
+  function verificarSenhaAdmin() {
+    var senha = window.prompt('Senha de administrador:');
+    if (senha === null) return false;
+    if (senha !== SENHA_ADMIN) {
+      window.alert('Senha incorreta.');
+      return false;
+    }
+    return true;
+  }
 
   function lerJSON(chave, padrao) {
     try { var v = localStorage.getItem(chave); return v ? JSON.parse(v) : padrao; }
@@ -1660,6 +1674,7 @@ document.addEventListener('click', function(e) {
     acoes.addEventListener('click', function(ev) {
       var btn = ev.target.closest('button[data-acao]');
       if (!btn) return;
+      if (!verificarSenhaAdmin()) return;
       if (btn.dataset.acao === 'dispensar') dispensarDestaque(card, chave);
       else if (btn.dataset.acao === 'renomear') renomearItem(card, chave);
     });
@@ -1685,6 +1700,8 @@ document.addEventListener('click', function(e) {
     pend[chave] = { nomeAntigo: nomeAtual, nomeNovo: novoNome, quando: new Date().toISOString().slice(0, 10) };
     salvarJSON(CHAVE_PENDENCIAS, pend);
     renderPendencias();
+    // Já editou uma vez -> não é mais "novo", some com o destaque sozinho.
+    dispensarDestaque(card, chave);
   }
 
   function removerPendencia(chave) {
