@@ -893,10 +893,60 @@ def fmt_preco(v):
     return f"{num:.2f}".replace(".", ",")
 
 
+def _normalizar_nome_preco(txt):
+    """Normaliza um nome de produto pra comparação: tira acento, baixa a
+    caixa, troca pontuação (/()., e apóstrofos) por espaço e colapsa
+    espaços. Usada tanto pro NOME da planilha quanto pro data-name do card,
+    porque um raramente é digitado igual ao outro (acento, barra, abreviação)."""
+    nome = _sem_acento(txt or "").lower()
+    nome = re.sub(r"[/().'’\"“”+\-]", " ", nome)
+    nome = re.sub(r"\s+", " ", nome).strip()
+    return nome
+
+
+# ── Mapa "Seção (referência)" (coluna da planilha) -> data-sec (do HTML) ──
+# Sem esse mapa, o script não tinha como saber que "coxa pilão" na aba de
+# Preços podia ser TRÊS produtos diferentes (bandeja resfriada, individual
+# resfriada, ou pacote congelado normal) com preços diferentes - a versão
+# antiga ignorava essa coluna, então quando o mesmo NOME aparecia em mais de
+# uma seção, só a última linha lida "vencia" e as outras eram perdidas (por
+# isso preços não batiam/não atualizavam).
+SECAO_REF_PARA_DATA_SEC = {
+    "cortes resfriados bandeja": "resfBdj",
+    "cortes resfriados individual": "resfInd",
+    "inteiros": "inteiros",
+    "perna": "perna",
+    "peito": "peito",
+    "asa": "asa",
+    "miudos": "miudos",
+    "iqf s": "iqf",
+    "iqf": "iqf",
+    "mix alimentos preparados": "mix",
+    "pescados": "pescados",
+    "vegetais": "vegetais",
+    "lancamentos copa": "copa",
+}
+
+# Sufixo que o HTML acrescenta ao nome nos cards das seções "prioridade"
+# (Resfriados), pra diferenciar de um produto de mesmo nome numa seção
+# normal (ex: "frango inteiro" resfriado x "frango inteiro" congelado).
+SUFIXO_POR_DATA_SEC = {
+    "resfBdj": " resfriado bandeja",
+    "resfInd": " resfriado individual",
+}
+
+
 def carregar_precos(csv_text):
-    """Lê a aba Precos (NOME, REFERENCIA, PRECO_1, PRECO_2, PRECO_3) e
-    devolve { nome: [preco1, preco2, preco3] }, com None nas posições vazias
-    (posição vazia = não mexe no valor que já está no site)."""
+    """Lê a aba Preços (NOME, REFERENCIA, PRECO_1, PRECO_2, PRECO_3, Seção
+    (referência)) e devolve { (data_sec, nome_normalizado): [preco1, preco2,
+    preco3] }, com None nas posições vazias (posição vazia = não mexe no
+    valor que já está no site).
+
+    A chave inclui o data_sec (derivado da coluna "Seção (referência)")
+    porque o mesmo NOME pode aparecer em mais de uma seção da planilha com
+    preços diferentes (ex: "filé de peito" existe resfriado em bandeja,
+    resfriado individual, E congelado normal - são 3 produtos/preços
+    distintos que homônimos)."""
     reader = csv.reader(StringIO(csv_text))
     rows = list(reader)
     precos = {}
@@ -904,16 +954,34 @@ def carregar_precos(csv_text):
         if not r or not r[0]:
             continue
         nome = r[0].strip()
+        secao_ref = r[5].strip() if len(r) > 5 else ""
+        data_sec = SECAO_REF_PARA_DATA_SEC.get(_normalizar_nome_preco(secao_ref))
+        if not data_sec:
+            print(
+                f"AVISO - preço de '{nome}': Seção (referência) '{secao_ref}' "
+                f"não reconhecida - linha ignorada (não sei em qual card aplicar)."
+            )
+            continue
+
         valores = []
         for i in (2, 3, 4):  # colunas PRECO_1, PRECO_2, PRECO_3
             bruto = r[i].strip() if len(r) > i else ""
             valores.append(fmt_preco(bruto))
-        precos[nome] = valores
+
+        chave = (data_sec, _normalizar_nome_preco(nome))
+        if chave in precos:
+            print(
+                f"AVISO - preço de '{nome}' (seção '{secao_ref}') está "
+                f"duplicado na planilha - usando a última linha encontrada."
+            )
+        precos[chave] = valores
     return precos
 
 
 def atualizar_precos_html(html, precos):
-    card_pattern = re.compile(r'(<div class="card[^"]*" data-sec="[^"]*" data-name="([^"]+)">)(.*?)(</div>)', re.S)
+    card_pattern = re.compile(
+        r'(<div class="card[^"]*" data-sec="([^"]*)" data-name="([^"]+)">)(.*?)(</div>)', re.S
+    )
 
     trend_m = re.search(r"var PRICE_TREND = (\{.*?\})\s*;", html, re.S)
     try:
@@ -921,16 +989,47 @@ def atualizar_precos_html(html, precos):
     except json.JSONDecodeError:
         trend = {}
 
+    # índice auxiliar por data_sec, pra permitir "match por prefixo" quando o
+    # nome da planilha é uma versão abreviada do nome do card (ex: planilha
+    # tem "fut wings trad (coxinha emp)", card tem "fut wings trad coxinha
+    # empanada") - sem isso, só bateria em correspondência exatamente igual.
+    por_secao = {}
+    for (data_sec, nome_norm), valores in precos.items():
+        por_secao.setdefault(data_sec, []).append((nome_norm, valores))
+
+    nomes_usados = set()
+
+    def _achar_valores(data_sec, nome_norm_card):
+        chave = (data_sec, nome_norm_card)
+        if chave in precos:
+            nomes_usados.add(chave)
+            return precos[chave]
+        # fallback: prefixo em qualquer direção, só dentro da mesma seção
+        candidatos = [
+            (n, v) for n, v in por_secao.get(data_sec, [])
+            if len(n) >= 6 and (n.startswith(nome_norm_card) or nome_norm_card.startswith(n))
+        ]
+        if len(candidatos) == 1:
+            nomes_usados.add((data_sec, candidatos[0][0]))
+            return candidatos[0][1]
+        return None
+
     def processa_card(m):
-        abertura, nome, inner, fechamento = m.groups()
-        if nome not in precos:
+        abertura, data_sec, nome, inner, fechamento = m.groups()
+
+        nome_essencial = nome
+        sufixo = SUFIXO_POR_DATA_SEC.get(data_sec)
+        if sufixo and nome_essencial.lower().endswith(sufixo):
+            nome_essencial = nome_essencial[: -len(sufixo)]
+
+        novos_valores = _achar_valores(data_sec, _normalizar_nome_preco(nome_essencial))
+        if novos_valores is None:
             return m.group(0)
 
         spans = list(re.finditer(r'<span class="p([^"]*)">([^<]*)</span>', inner))
         if not spans:
             return m.group(0)
 
-        novos_valores = precos[nome]
         preco_principal_antigo = spans[0].group(2)
         preco_principal_novo = novos_valores[0] if novos_valores[0] else preco_principal_antigo
 
@@ -945,6 +1044,8 @@ def atualizar_precos_html(html, precos):
             novo_inner = novo_inner[: span.start()] + novo_span + novo_inner[span.end():]
 
         # tendência: compara o preço principal (primeira coluna) antigo vs novo
+        # (chave = data-name COMPLETO do card, não o nome da planilha - assim
+        # dois cards homônimos em seções diferentes têm tendências separadas)
         try:
             antigo_f = float(preco_principal_antigo.replace(".", "").replace(",", "."))
             novo_f = float(preco_principal_novo.replace(".", "").replace(",", "."))
@@ -962,6 +1063,12 @@ def atualizar_precos_html(html, precos):
         return abertura + novo_inner + fechamento
 
     new_html = card_pattern.sub(processa_card, html, count=0)
+
+    nao_usados = set(precos.keys()) - nomes_usados
+    if nao_usados:
+        print(f"AVISO - {len(nao_usados)} linha(s) de preço da planilha não bateram com nenhum card do HTML:")
+        for data_sec, nome_norm in sorted(nao_usados):
+            print(f"  - seção '{data_sec}': '{nome_norm}'")
 
     new_trend_str = json.dumps(trend, ensure_ascii=False)
     new_html, n_subs = re.subn(
