@@ -16,7 +16,8 @@
 <meta name="apple-mobile-web-app-title" content="Estoque Apuc">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html { overscroll-behavior-y: contain; }
+  html { overscroll-behavior-y: contain; overflow-x: hidden; }
+  body { overflow-x: hidden; }
 
   :root {
     --ink: #1c1611;
@@ -149,7 +150,7 @@
 
   .templates-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
     gap: 12px;
   }
 
@@ -164,6 +165,9 @@
     font-family: inherit;
     color: var(--ink);
     transition: box-shadow .15s, transform .1s, border-color .15s;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
   }
   .template-card:hover { box-shadow: var(--shadow-md); border-color: var(--brand-glow); }
   .template-card:active { transform: scale(.98); }
@@ -183,7 +187,11 @@
   .template-dest {
     margin-top: 10px; font-size: 10.5px; color: var(--muted);
     font-family: var(--mono);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    overflow-wrap: break-word; word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .empty-note {
