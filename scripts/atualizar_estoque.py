@@ -1872,7 +1872,10 @@ def inserir_cards_novos(html, data, linhas_brutas):
             )
 
         secao, grupo_label = destino
-        m_peso = re.search(r"CX\s+([\d,.]+)\s*KG", nome_produto, re.I)
+        # A descrição do ERP quase sempre tem "CX PP <peso> KG" (às vezes só
+        # "CX <peso> KG") - o "PP"/"PV"/etc. no meio fazia o peso não bater
+        # e o card novo nascer sem o "Cx X kg" no cabeçalho.
+        m_peso = re.search(r"CX\s+(?:[A-ZÇÃÕ]+\s+)?([\d,.]+)\s*KG", nome_produto, re.I)
         peso_cx = m_peso.group(1).replace(".", ",") if m_peso else ""
         saldo = data.get(codigo, 0)
 
