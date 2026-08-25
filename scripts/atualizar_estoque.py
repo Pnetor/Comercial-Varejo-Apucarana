@@ -1077,6 +1077,21 @@ def atualizar_precos_html(html, precos):
         new_html, count=1, flags=re.S,
     )
 
+    # ── Validade da tabela: sempre a próxima sexta-feira a partir de hoje ──
+    # (se hoje já for sexta, mantém hoje - a tabela ainda vale até o fim do
+    # dia). Isso substitui a data fixa no badge toda vez que os preços são
+    # atualizados, então o aviso de "tabela vencida" nunca mais fica parado
+    # numa data antiga.
+    hoje_brt = (datetime.now(timezone.utc) - timedelta(hours=3)).date()
+    dias_ate_sexta = (4 - hoje_brt.weekday()) % 7  # segunda=0 ... sexta=4
+    proxima_sexta = hoje_brt + timedelta(days=dias_ate_sexta)
+    nova_validade = proxima_sexta.strftime("%d/%m/%Y")
+    new_html = re.sub(
+        r'(<div class="validity-badge">📅 Válida até )\d{2}/\d{2}/\d{4}(</div>)',
+        rf"\g<1>{nova_validade}\g<2>",
+        new_html,
+    )
+
     return new_html
 
 
