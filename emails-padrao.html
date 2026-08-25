@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<title>E-mails Padrão · Canção Alimentos</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="theme-color" content="#8f0e28">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Estoque Apuc">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { overscroll-behavior-y: contain; }
+
+  :root {
+    --ink: #1c1611;
+    --ink-soft: #56493e;
+    --paper: #f1ebdf;
+    --surface: #fffdfa;
+    --surface-raised: #ffffff;
+    --line: #e3d8c6;
+    --line-soft: #ece3d3;
+    --brand: #8f0e28;
+    --brand-dark: #59091b;
+    --brand-glow: #c1354e;
+    --gold: #9c6c0d;
+    --gold-soft: #f8ecd3;
+    --muted: #92836f;
+    --mono: 'IBM Plex Mono', 'SFMono-Regular', monospace;
+    --display: 'Bricolage Grotesque', 'Segoe UI', sans-serif;
+    --body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --shadow-sm: 0 1px 2px rgba(28,22,17,.07), 0 1px 1px rgba(28,22,17,.05);
+    --shadow-md: 0 6px 18px rgba(28,22,17,.10), 0 1px 4px rgba(28,22,17,.06);
+    --shadow-lg: 0 14px 34px rgba(28,22,17,.16), 0 3px 10px rgba(28,22,17,.09);
+    --shadow-xl: 0 24px 60px rgba(28,22,17,.20), 0 6px 16px rgba(28,22,17,.10);
+  }
+
+  html[data-theme="dark"] {
+    --ink: #f1ebe0;
+    --ink-soft: #cabfae;
+    --paper: #161210;
+    --surface: #1e1a16;
+    --surface-raised: #26211c;
+    --line: #3a332b;
+    --line-soft: #2d2822;
+    --brand: #c1354e;
+    --brand-dark: #8f0e28;
+    --brand-glow: #e3536a;
+    --gold: #d9a344;
+    --gold-soft: #3a2f1a;
+    --muted: #8f8477;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.3), 0 1px 1px rgba(0,0,0,.2);
+    --shadow-md: 0 6px 18px rgba(0,0,0,.35), 0 1px 4px rgba(0,0,0,.25);
+    --shadow-lg: 0 14px 34px rgba(0,0,0,.45), 0 3px 10px rgba(0,0,0,.3);
+    --shadow-xl: 0 24px 60px rgba(0,0,0,.55), 0 6px 16px rgba(0,0,0,.35);
+  }
+
+  html[data-theme="dark"] body {
+    background-image:
+      radial-gradient(ellipse 900px 500px at 100% -5%, rgba(193,53,78,.08), transparent 55%),
+      radial-gradient(ellipse 800px 500px at -10% 105%, rgba(217,163,68,.06), transparent 50%);
+  }
+
+  body {
+    font-family: var(--body);
+    background: var(--paper);
+    background-image:
+      radial-gradient(ellipse 900px 500px at 100% -5%, rgba(143,14,40,.06), transparent 55%),
+      radial-gradient(ellipse 800px 500px at -10% 105%, rgba(156,108,13,.07), transparent 50%);
+    background-attachment: fixed;
+    color: var(--ink);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  .theme-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 10px;
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.3);
+    color: #fff; font-size: 15px; cursor: pointer;
+    margin-left: 8px;
+  }
+  .theme-toggle:active { transform: scale(.94); }
+
+  .page-tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .page-tab {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 13px;
+    border-radius: 20px;
+    font-family: var(--body);
+    font-size: 12px; font-weight: 600;
+    text-decoration: none;
+    color: rgba(255,255,255,.75);
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    transition: background .15s;
+  }
+  .page-tab.active { background: #fff; color: var(--brand-dark); border-color: #fff; }
+  .page-tab:not(.active):active { background: rgba(255,255,255,.22); }
+
+  header {
+    background:
+      radial-gradient(ellipse at 18% -40%, rgba(255,255,255,.16), transparent 55%),
+      linear-gradient(155deg, var(--brand) 0%, var(--brand-dark) 100%);
+    color: #fff;
+    padding: calc(22px + env(safe-area-inset-top, 0px)) 18px 34px;
+    position: relative;
+    z-index: 10;
+    box-shadow: var(--shadow-lg);
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+  }
+  .header-text { min-width: 0; overflow: hidden; }
+  header h1 {
+    font-family: var(--display);
+    font-size: 20px; font-weight: 700; letter-spacing: .1px;
+  }
+  header p {
+    font-size: 11px; opacity: .8; margin-top: 3px;
+    letter-spacing: .3px;
+  }
+  .header-right { display: flex; align-items: center; flex-shrink: 0; }
+
+  .content-wrap {
+    max-width: 900px;
+    margin: -14px auto 40px;
+    padding: 0 16px;
+    position: relative;
+    z-index: 5;
+  }
+
+  .section-label {
+    font-family: var(--display);
+    font-size: 13px; font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: .6px;
+    margin: 22px 2px 10px;
+  }
+
+  .templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+
+  .template-card {
+    background: var(--surface-raised);
+    border: 1px solid var(--line-soft);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: var(--ink);
+    transition: box-shadow .15s, transform .1s, border-color .15s;
+  }
+  .template-card:hover { box-shadow: var(--shadow-md); border-color: var(--brand-glow); }
+  .template-card:active { transform: scale(.98); }
+  .template-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 11px;
+    background: var(--gold-soft); color: var(--gold);
+    font-size: 18px; margin-bottom: 10px;
+  }
+  .template-card h3 {
+    font-family: var(--display);
+    font-size: 15px; font-weight: 700; margin-bottom: 4px;
+  }
+  .template-card p {
+    font-size: 12px; color: var(--muted); line-height: 1.4;
+  }
+  .template-dest {
+    margin-top: 10px; font-size: 10.5px; color: var(--muted);
+    font-family: var(--mono);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .empty-note {
+    background: var(--surface-raised);
+    border: 1px dashed var(--line);
+    border-radius: 14px;
+    padding: 22px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12.5px;
+    margin-top: 10px;
+  }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(20,15,10,.55);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 900;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.show { display: flex; }
+  @media (min-width: 620px) {
+    .modal-overlay { align-items: center; }
+  }
+  .modal {
+    background: var(--surface-raised);
+    width: 100%;
+    max-width: 540px;
+    max-height: 92vh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    box-shadow: var(--shadow-xl);
+    padding: 20px;
+  }
+  @media (min-width: 620px) {
+    .modal { border-radius: 20px; }
+  }
+  .modal-hdr {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 10px; margin-bottom: 14px;
+  }
+  .modal-hdr h2 {
+    font-family: var(--display);
+    font-size: 17px; font-weight: 700;
+  }
+  .modal-hdr .modal-sub {
+    font-size: 11.5px; color: var(--muted); margin-top: 3px;
+  }
+  .modal-close {
+    background: var(--line-soft); border: 0; border-radius: 9px;
+    width: 30px; height: 30px; font-size: 15px; color: var(--ink);
+    cursor: pointer; flex-shrink: 0;
+  }
+  .modal-dest-box {
+    background: var(--gold-soft); border-radius: 11px; padding: 9px 12px;
+    font-size: 11px; color: var(--ink-soft); margin-bottom: 16px; line-height: 1.5;
+  }
+  .modal-dest-box b { color: var(--ink); }
+  .field { margin-bottom: 13px; }
+  .field label {
+    display: block; font-size: 12px; font-weight: 700;
+    color: var(--ink-soft); margin-bottom: 5px;
+  }
+  .field .hint {
+    font-size: 10.5px; color: var(--muted); font-weight: 400;
+    margin-left: 4px;
+  }
+  .field input, .field textarea {
+    width: 100%; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--surface);
+    color: var(--ink); font: inherit; font-size: 16px;
+    outline: none; resize: vertical;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field textarea:focus { border-color: var(--brand-glow); }
+  .field textarea { min-height: 70px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 18px; }
+  .btn {
+    flex: 1; padding: 12px; border-radius: 12px; border: 0;
+    font: inherit; font-size: 13.5px; font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:active { background: var(--brand-dark); }
+  .btn-secondary { background: var(--line-soft); color: var(--ink); flex: 0 0 auto; padding: 12px 16px; }
+
+  /* ── COMPACTO EM TELAS ESTREITAS ── */
+  @media (max-width: 480px) {
+    header { padding: calc(16px + env(safe-area-inset-top, 0px)) 12px 26px; }
+    .page-tabs { margin-bottom: 8px; }
+    .page-tab { padding: 6px 10px; font-size: 11px; }
+    header h1 { font-size: 17px; }
+    header p { font-size: 10px; }
+    .theme-toggle { width: 28px; height: 28px; font-size: 13px; }
+    .content-wrap { margin-top: -10px; padding: 0 12px; }
+    .section-label { font-size: 12px; margin: 18px 2px 8px; }
+    .templates-grid { grid-template-columns: 1fr; gap: 10px; }
+    .template-card { padding: 14px; }
+    .modal { padding: 16px; max-height: 88vh; }
+    .modal-hdr h2 { font-size: 15.5px; }
+    .modal-actions { flex-direction: column-reverse; }
+    .btn-secondary { width: 100%; }
+  }
+</style>
+</head>
+<script>
+(function() {
+  var saved = localStorage.getItem('estoque-theme');
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var theme = saved || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+})();
+</script>
+<body>
+
+<header>
+  <div class="page-tabs">
+    <a href="./index.html" class="page-tab">📦 Estoque</a>
+    <a href="./tabela-precos.html" class="page-tab">💰 Preços</a>
+    <a href="./pedidos-em-aberto.html" class="page-tab">📋 Pedidos</a>
+    <a href="./emails-padrao.html" class="page-tab active">📧 Emails</a>
+  </div>
+  <div class="header-top">
+    <div class="header-text">
+      <h1>E-mails Padrão</h1>
+      <p>Modelos prontos · escolha, preencha e envie</p>
+    </div>
+    <div class="header-right">
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Alternar tema">🌙</button>
+    </div>
+  </div>
+</header>
+
+<div class="content-wrap">
+  <div class="section-label">Modelos disponíveis</div>
+  <div class="templates-grid" id="templatesGrid"></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div>
+        <h2 id="modalTitle"></h2>
+        <div class="modal-sub" id="modalSub"></div>
+      </div>
+      <button class="modal-close" onclick="fecharModal()">✕</button>
+    </div>
+    <div class="modal-dest-box">
+      <b>Para:</b> <span id="modalDest"></span>
+      <div id="modalCcNota" style="margin-top:6px;display:none">⚠️ <b>Sempre coloque seu supervisor em cópia</b> - preencha o e-mail dele no campo abaixo.</div>
+      <div id="modalAvisos"></div>
+    </div>
+    <form id="modalForm"></form>
+  </div>
+</div>
+
+<script>
+// ────────────────────────────────────────────────────────────────
+// Modelos de e-mail padrão. Pra adicionar um novo, é só incluir um
+// objeto aqui - o formulário e o botão de gerar e-mail são montados
+// sozinhos a partir dos "fields".
+// ────────────────────────────────────────────────────────────────
+var TEMPLATES = [
+  {
+    id: 'prioridade-cadastro',
+    icon: '⚡',
+    titulo: 'Prioridade de Cadastro',
+    descricao: 'Solicitar prioridade no cadastro de um cliente.',
+    destinatarios: [
+      'central.cadastro@gtf.com.br',
+      'fiscal.matriz@gtf.com.br',
+      'AnalisedeCreditoGTF@gtf.com.br',
+      'comercial.varejo@gtf.com.br'
+    ],
+    fields: [
+      { key: 'razaoSocial', label: 'Razão Social', type: 'text', placeholder: 'Ex: Comercial Varejo Apucarana LTDA', required: true },
+      { key: 'cnpj', label: 'CNPJ', type: 'text', placeholder: '00.000.000/0000-00', required: true },
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true },
+      { key: 'observacao', label: 'Observação', type: 'textarea', placeholder: 'Alguma informação extra sobre o cadastro (opcional)', required: false }
+    ],
+    // "cc" é opcional por modelo - quando existe, esses endereços entram
+    // em cópia no e-mail (aqui é sempre o supervisor informado no campo acima).
+    cc: function(v) {
+      return [v.supervisorEmail];
+    },
+    assunto: function(v) {
+      return 'Prioridade de Cadastro - Cliente ' + v.razaoSocial + ' - ' + v.cnpj;
+    },
+    corpo: function(v) {
+      return saudacao() + '\n\n' +
+        'Solicito prioridade no cadastro dos clientes abaixo.\n\n' +
+        'Razão Social: ' + v.razaoSocial + '\n' +
+        'Cnpj: ' + v.cnpj + '\n\n' +
+        'Observação:\n' + (v.observacao || '');
+    }
+  },
+  {
+    id: 'solicitacao-bonificacao',
+    icon: '🎁',
+    titulo: 'Solicitação de Bonificação',
+    descricao: 'Solicitar bonificação para um cliente (anexar o arquivo do cliente).',
+    destinatarios: [
+      'comercial.varejo@gtf.com.br'
+    ],
+    avisos: [
+      '📎 Anexe o arquivo do cliente antes de enviar - o e-mail não anexa sozinho.'
+    ],
+    fields: [
+      { key: 'razaoSocial', label: 'Razão Social', type: 'text', placeholder: 'Ex: Comercial Varejo Apucarana LTDA', required: true },
+      { key: 'codigo', label: 'Código', type: 'text', placeholder: 'Código do cliente', required: true },
+      { key: 'supervisorNome', label: 'Nome do supervisor', type: 'text', placeholder: 'Ex: Maria Silva', required: true },
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+    ],
+    cc: function(v) {
+      return [v.supervisorEmail];
+    },
+    assunto: function(v) {
+      return 'Solicitação de Bonificação - ' + v.razaoSocial + ' - ' + v.codigo;
+    },
+    corpo: function(v) {
+      return saudacao() + '\n\n' +
+        'Solicito bonificação para o cliente em anexo.\n\n' +
+        'Supervisor ' + v.supervisorNome + ' poderia dar o OK no e-mail por favor.';
+    }
+  },
+  {
+    id: 'cadastro-forma-pagamento',
+    icon: '💳',
+    titulo: 'Cadastro de Forma de Pagamento / Análise de Crédito',
+    descricao: 'Solicitar análise de crédito e cadastro da forma de pagamento de um cliente.',
+    destinatarios: [
+      'AnalisedeCreditoGTF@gtf.com.br',
+      'comercial.varejo@gtf.com.br'
+    ],
+    avisos: [
+      '📎 Se tiver, anexe a foto da fachada do estabelecimento (opcional).'
+    ],
+    fields: [
+      { key: 'razaoSocial', label: 'Razão Social', type: 'text', placeholder: 'Ex: Comercial Varejo Apucarana LTDA', required: true },
+      { key: 'codigo', label: 'Código do cliente', type: 'text', placeholder: 'Código do cliente', required: true },
+      { key: 'limiteSugerido', label: 'Limite sugerido', type: 'text', placeholder: 'Ex: R$ 5.000,00', required: true },
+      { key: 'formaPagamentoSugerido', label: 'Forma de pagamento sugerido', type: 'text', placeholder: 'Ex: Boleto 28 dias', required: true },
+      { key: 'observacao', label: 'Observação', type: 'textarea', placeholder: 'Alguma informação extra (opcional)', required: false },
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+    ],
+    cc: function(v) {
+      return [v.supervisorEmail];
+    },
+    assunto: function(v) {
+      return 'Cadastro de forma de pagamento / Analise de crédito. - ' + v.razaoSocial + ' - ' + v.codigo;
+    },
+    corpo: function(v) {
+      return saudacao() + '\n\n' +
+        'Solicito a análise do cliente abaixo e o cadastro da forma de pagamento e limite de crédito.\n\n' +
+        'Razão social: ' + v.razaoSocial + '\n' +
+        'Código do cliente: ' + v.codigo + '\n' +
+        'Limite sugerido: ' + v.limiteSugerido + '\n' +
+        'Forma de pagamento sugerido: ' + v.formaPagamentoSugerido + '\n' +
+        'Foto da fachada do estabelecimento: (opcional, ver anexo)\n\n' +
+        'Observação:\n' + (v.observacao || '');
+    }
+  },
+  {
+    id: 'baixa-titulo',
+    icon: '🧾',
+    titulo: 'Baixa de Título',
+    descricao: 'Solicitar a baixa de um título/NF de um cliente.',
+    destinatarios: [
+      'contas.receber@gtf.com.br',
+      'comercial.varejo@gtf.com.br'
+    ],
+    avisos: [
+      '📎 Se tiver, anexe a foto do comprovante de pagamento (opcional).'
+    ],
+    fields: [
+      { key: 'razaoSocial', label: 'Razão Social', type: 'text', placeholder: 'Ex: Comercial Varejo Apucarana LTDA', required: true },
+      { key: 'codigo', label: 'Código do cliente', type: 'text', placeholder: 'Código do cliente', required: true },
+      { key: 'nf', label: 'NF', type: 'text', placeholder: 'Número da nota fiscal', required: true },
+      { key: 'observacao', label: 'Observação', type: 'textarea', placeholder: 'Alguma informação extra (opcional)', required: false },
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+    ],
+    cc: function(v) {
+      return [v.supervisorEmail];
+    },
+    assunto: function(v) {
+      return 'Baixa de Titulo: - ' + v.razaoSocial + ' - ' + v.codigo;
+    },
+    corpo: function(v) {
+      return saudacao() + '\n\n' +
+        'Solicito a baixa do titulo abaixo:\n\n' +
+        'Razão social: ' + v.razaoSocial + '\n' +
+        'Código do cliente: ' + v.codigo + '\n' +
+        'NF: ' + v.nf + '\n' +
+        'Foto do comprovante de pagamento: (opcional, ver anexo)\n\n' +
+        'Observação:\n' + (v.observacao || '');
+    }
+  },
+  {
+    id: 'troca-produto-reclamacao',
+    icon: '🔄',
+    titulo: 'Troca de Produto / Reclamação de Cliente',
+    descricao: 'Registrar uma reclamação/troca de produto de um cliente (anexar as fotos pedidas).',
+    destinatarios: [
+      'sac@cancaoalimentos.com.br',
+      'comercial.varejo@gtf.com.br'
+    ],
+    avisos: [
+      '📎 Anexe as fotos: (1) do produto com a inconformidade, (2) da embalagem (nome e marca), (3) do carimbo com fabricação/validade/lote, e (4) do cupom fiscal.'
+    ],
+    fields: [
+      { key: 'razaoSocial', label: 'Razão Social', type: 'text', placeholder: 'Ex: Comercial Varejo Apucarana LTDA', required: true },
+      { key: 'codigo', label: 'Código do cliente', type: 'text', placeholder: 'Código do cliente', required: true },
+      { key: 'nomeCompleto', label: 'Nome completo', type: 'text', placeholder: 'Nome completo do cliente', required: true },
+      { key: 'enderecoCompleto', label: 'Endereço completo', type: 'text', placeholder: 'Endereço completo', required: true },
+      { key: 'telefone', label: 'Telefone / WhatsApp', type: 'text', placeholder: '(00) 00000-0000', required: true },
+      { key: 'ausenciaCupom', label: 'Na ausência do cupom fiscal, informar', hint: '(só preencha se não tiver o cupom)', type: 'textarea', placeholder: 'Ex: data e local aproximado da compra', required: false },
+      { key: 'quantidadeAdquirida', label: 'Quantidade adquirida', type: 'text', placeholder: 'Ex: 5 unidades', required: true },
+      { key: 'quantidadeInconformidade', label: 'Quantidade com a inconformidade relatada', type: 'text', placeholder: 'Ex: 1 unidade', required: true },
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+    ],
+    cc: function(v) {
+      return [v.supervisorEmail];
+    },
+    assunto: function(v) {
+      return 'Troca de Produto/Reclamações de Cliente: - ' + v.razaoSocial + ' - ' + v.codigo;
+    },
+    corpo: function(v) {
+      return saudacao() + '\n\n' +
+        'Nome completo: ' + v.nomeCompleto + '\n' +
+        'Endereço completo: ' + v.enderecoCompleto + '\n' +
+        'Telefone / WhatsApp: ' + v.telefone + '\n' +
+        'Fotos do produto com a inconformidade relatada (inconformidade identificada): em anexo\n' +
+        'Fotos da embalagem onde aparecem nome e marca do produto: em anexo\n' +
+        'Fotos do carimbo com as datas de fabricação, validade, lote: em anexo\n' +
+        'Fotos do cupom fiscal: em anexo\n' +
+        'Na ausência do cupom fiscal, informar: ' + (v.ausenciaCupom || '-') + '\n' +
+        'Quantidade adquirida: ' + v.quantidadeAdquirida + '\n' +
+        'Quantidade com a inconformidade relatada: ' + v.quantidadeInconformidade;
+    }
+  },
+  {
+    id: 'abertura-ocorrencia',
+    icon: '🚨',
+    titulo: 'Abertura de Ocorrência',
+    descricao: 'Registrar uma ocorrência de entrega/nota fiscal.',
+    destinatarios: [
+      'diego.lopes@gtf.com.br',
+      'raphael.sauer@gtf.com.br',
+      'geovana.canevarolli1@gtf.com.br',
+      'gabrieli.lima@gtf.com.br',
+      'fabio.stempniak@gtf.com.br',
+      'ocorrencia@gtf.com.br'
+    ],
+    fields: [
+      { key: 'romaneio', label: 'Romaneio/carga', type: 'text', placeholder: 'Número do romaneio/carga', required: true },
+      { key: 'nf', label: 'NF', type: 'text', placeholder: 'Número da nota fiscal', required: true },
+      { key: 'razaoSocial', label: 'Razão Social', type: 'text', placeholder: 'Ex: Comercial Varejo Apucarana LTDA', required: true },
+      { key: 'cnpj', label: 'CNPJ', type: 'text', placeholder: '00.000.000/0000-00', required: true },
+      { key: 'codigo', label: 'Código cliente', type: 'text', placeholder: 'Código do cliente', required: true },
+      { key: 'cidadeUf', label: 'Cidade/UF', type: 'text', placeholder: 'Ex: Apucarana/PR', required: true },
+      { key: 'motorista', label: 'Motorista', type: 'text', placeholder: 'Nome do motorista', required: true },
+      { key: 'placa', label: 'Placa', type: 'text', placeholder: 'Ex: ABC1D23', required: true },
+      { key: 'condPagamento', label: 'Cond. Pagamento', type: 'text', placeholder: 'Ex: Boleto 28 dias', required: true },
+      { key: 'valorNf', label: 'Valor NF', type: 'text', placeholder: 'Ex: R$ 1.500,00', required: true },
+      { key: 'emissao', label: 'Emissão', type: 'text', placeholder: 'DD/MM/AAAA', required: true },
+      { key: 'vendedor', label: 'Vendedor', type: 'text', placeholder: 'Seu nome', required: true },
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+    ],
+    cc: function(v) {
+      return [v.supervisorEmail];
+    },
+    assunto: function(v) {
+      return 'ABERTURA DE OCORRÊNCIA - NF:' + v.nf + ' - ROMANEIO: ' + v.romaneio + ' - CLIENTE: ' + v.razaoSocial + ' ' + v.codigo;
+    },
+    corpo: function(v) {
+      return saudacao() + '\n\n' +
+        'Segue abaixo os dados da ocorrência:\n\n' +
+        'Romaneio/carga: ' + v.romaneio + '\n' +
+        'NF: ' + v.nf + '\n' +
+        'Razão Social: ' + v.razaoSocial + '\n' +
+        'CNPJ: ' + v.cnpj + '\n' +
+        'Código cliente: ' + v.codigo + '\n' +
+        'Cidade/UF: ' + v.cidadeUf + '\n' +
+        'Motorista: ' + v.motorista + '\n' +
+        'Placa: ' + v.placa + '\n' +
+        'Cond. Pagamento: ' + v.condPagamento + '\n' +
+        'Valor NF: ' + v.valorNf + '\n' +
+        'Emissão: ' + v.emissao + '\n' +
+        'Vendedor: ' + v.vendedor;
+    }
+  },
+  {
+    id: 'programacao-cargas',
+    icon: '🚚',
+    titulo: 'Programação de Cargas',
+    descricao: 'Enviar os dados de um cliente para a programação de carga.',
+    destinatarios: [
+      'Comercial.varejo@gtf.com.br',
+      'geovana.canevarolli1@gtf.com.br',
+      'raphael.sauer@gtf.com.br',
+      'diego.lopes@gtf.com.br',
+      'rayane.scheffer@gtf.com.br',
+      'gabriel.mazoti@gtf.com.br',
+      'eduardo.antoneli@gtf.com.br',
+      'marisa.mexia@gtf.com.br',
+      'larissa.pereira@gtf.com.br',
+      'gabriela.proenca@gtf.com.br'
+    ],
+    fields: [
+      { key: 'razaoSocial', label: 'Razão Social', type: 'text', placeholder: 'Ex: Comercial Varejo Apucarana LTDA', required: true },
+      { key: 'codigo', label: 'Código', type: 'text', placeholder: 'Código do cliente', required: true },
+      { key: 'pedidosErp', label: 'Pedidos ERP', type: 'text', placeholder: 'Números dos pedidos no ERP', required: true },
+      { key: 'dataCarregamento', label: 'Data de Carregamento', type: 'text', placeholder: 'DD/MM/AAAA', required: true },
+      { key: 'produtos', label: 'Produtos', type: 'textarea', placeholder: 'Liste os produtos da carga', required: true },
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+    ],
+    cc: function(v) {
+      return [v.supervisorEmail];
+    },
+    assunto: function(v) {
+      return 'Programação de Cargas - ' + v.razaoSocial + ' - ' + v.codigo;
+    },
+    corpo: function(v) {
+      return saudacao() + '\n\n' +
+        'Segue abaixo dados para a programação de carga\n\n' +
+        'Razão social: ' + v.razaoSocial + '\n' +
+        'Código: ' + v.codigo + '\n' +
+        'Pedidos ERP: ' + v.pedidosErp + '\n' +
+        'Data de Carregamento: ' + v.dataCarregamento + '\n' +
+        'Produtos: ' + v.produtos;
+    }
+  }
+];
+
+function saudacao() {
+  var h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
+function montarGrid() {
+  var grid = document.getElementById('templatesGrid');
+  if (!TEMPLATES.length) {
+    grid.innerHTML = '';
+    var vazio = document.createElement('div');
+    vazio.className = 'empty-note';
+    vazio.textContent = 'Nenhum modelo de e-mail cadastrado ainda.';
+    document.querySelector('.content-wrap').appendChild(vazio);
+    return;
+  }
+  TEMPLATES.forEach(function(t) {
+    var card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'template-card';
+    card.innerHTML =
+      '<div class="template-icon">' + t.icon + '</div>' +
+      '<h3>' + t.titulo + '</h3>' +
+      '<p>' + t.descricao + '</p>' +
+      '<div class="template-dest">Para: ' + t.destinatarios.join(', ') + '</div>';
+    card.addEventListener('click', function() { abrirModal(t); });
+    grid.appendChild(card);
+  });
+}
+
+function abrirModal(template) {
+  document.getElementById('modalTitle').textContent = template.icon + ' ' + template.titulo;
+  document.getElementById('modalSub').textContent = template.descricao;
+  document.getElementById('modalDest').textContent = template.destinatarios.join(', ');
+  document.getElementById('modalCcNota').style.display = template.cc ? 'block' : 'none';
+  var avisosEl = document.getElementById('modalAvisos');
+  avisosEl.innerHTML = '';
+  (template.avisos || []).forEach(function(txt) {
+    var linha = document.createElement('div');
+    linha.style.marginTop = '6px';
+    linha.textContent = txt;
+    avisosEl.appendChild(linha);
+  });
+
+  var form = document.getElementById('modalForm');
+  form.innerHTML = '';
+  template.fields.forEach(function(f) {
+    var wrap = document.createElement('div');
+    wrap.className = 'field';
+    var label = document.createElement('label');
+    label.textContent = f.label + (f.required ? '' : ' (opcional)');
+    if (f.hint) {
+      var hint = document.createElement('span');
+      hint.className = 'hint';
+      hint.textContent = f.hint;
+      label.appendChild(hint);
+    }
+    wrap.appendChild(label);
+    var input;
+    if (f.type === 'textarea') {
+      input = document.createElement('textarea');
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+    }
+    input.id = 'campo_' + f.key;
+    input.placeholder = f.placeholder || '';
+    if (f.required) input.required = true;
+    wrap.appendChild(input);
+    form.appendChild(wrap);
+  });
+
+  var actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  actions.innerHTML =
+    '<button type="button" class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>' +
+    '<button type="submit" class="btn btn-primary">✉️ Gerar e-mail</button>';
+  form.appendChild(actions);
+
+  form.onsubmit = function(ev) {
+    ev.preventDefault();
+    var valores = {};
+    var faltando = [];
+    template.fields.forEach(function(f) {
+      var el = document.getElementById('campo_' + f.key);
+      valores[f.key] = el.value.trim();
+      if (f.required && !valores[f.key]) faltando.push(f.label);
+    });
+    if (faltando.length) {
+      window.alert('Preencha antes de gerar o e-mail: ' + faltando.join(', '));
+      return;
+    }
+    var to = template.destinatarios.join(',');
+    var assunto = template.assunto(valores);
+    var corpo = template.corpo(valores);
+    var mailto = 'mailto:' + to +
+      '?subject=' + encodeURIComponent(assunto) +
+      '&body=' + encodeURIComponent(corpo);
+    if (template.cc) {
+      var cc = template.cc(valores).filter(Boolean);
+      if (cc.length) mailto += '&cc=' + encodeURIComponent(cc.join(','));
+    }
+    window.location.href = mailto;
+  };
+
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function fecharModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+document.getElementById('modalOverlay').addEventListener('click', function(ev) {
+  if (ev.target === this) fecharModal();
+});
+
+function toggleTheme() {
+  var cur = document.documentElement.getAttribute('data-theme');
+  var next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('estoque-theme', next);
+  document.getElementById('themeToggle').textContent = next === 'dark' ? '☀️' : '🌙';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var cur = document.documentElement.getAttribute('data-theme');
+  document.getElementById('themeToggle').textContent = cur === 'dark' ? '☀️' : '🌙';
+  montarGrid();
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js').catch(function() {});
+  });
+}
+</script>
+</body>
+</html>
