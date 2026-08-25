@@ -39,6 +39,12 @@ jobs:
         run: python scripts/atualizar_estoque.py
 
       - name: Commit e push se houve mudança
+        # Roda mesmo se o passo anterior terminar com erro de validação
+        # (seção reprovada na conferência) - as páginas que passaram na
+        # checagem e mudaram no disco ainda devem ser publicadas; só a(s)
+        # página(s) reprovada(s) fica(m) sem mudança (então nem entra no
+        # commit). Só não roda se a rodada foi cancelada manualmente.
+        if: ${{ !cancelled() }}
         run: |
           git config user.name "estoque-bot"
           git config user.email "actions@github.com"
