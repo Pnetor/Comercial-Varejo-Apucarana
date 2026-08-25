@@ -357,7 +357,8 @@ def classificar_produto_novo(nome_produto):
         "EMPANAD", "CHICKEN", "BATATA", "MANDIOCA", "POLENTA",
         "ANEL DE CEBOLA", "PAO DE QUEIJO", "LASANHA", "TILAPIA", "PEIXE",
         "FISH", "BURGUER", "BOLINHO", "WINGS", "NUGGET", "ISCA DE",
-        "HAMBURGUER", "STEAK", "NOISETTE",
+        "HAMBURGUER", "STEAK", "NOISETTE", "KIBE", "QUIBE", "ESPETO",
+        "GOLDEN", "PIZZA", "TORTA", "PASTEL", "COXINHA DE FRANGO PRE FRITA",
     )
     if any(k in nome for k in sinais_alimentos):
         return ("alimentos", "ALIMENTOS")
@@ -375,19 +376,98 @@ def classificar_produto_novo(nome_produto):
             return ("congelados", "GRUPO BANDEJA CONGELADA")
         if any(k in nome for k in ("INTEIR", "GALINHA", "GALO", "CARCACA", "TEMPERAD")):
             return ("congelados", "GRUPO INTEIROS")
-        if "ASA" in nome:
+        if any(k in nome for k in ("ASA", "DRUMET")):
             return ("congelados", "GRUPO ASA")
-        if any(k in nome for k in ("COXA", "SOBRECOXA", "PERNA", "DORSAL", "LEG QUARTER")):
+        if any(k in nome for k in ("COXA", "SOBRECOXA", "PERNA", "DORSAL",
+                                    "LEG QUARTER", "TULIPA", "QUARTO DE PERNA")):
             return ("congelados", "GRUPO PERNA")
         if any(k in nome for k in ("PEITO", "FILE", "FILEZINHO", "SASSAMI")):
             return ("congelados", "GRUPO PEITO")
         if any(k in nome for k in ("CORACAO", "FIGADO", "MOELA", "PESCOCO", "CMS",
-                                    "PES ", "SAMBIQUIRA", "MIUDO", "CARTILAGEM")):
+                                    "PES ", "SAMBIQUIRA", "MIUDO", "CARTILAGEM",
+                                    "MOLA", "PAPADA", "CRISTA", "MIUDEZA")):
             return ("congelados", "GRUPO MIUDOS")
         # é congelado mas o corte especifico nao bateu com nenhuma palavra-chave
         return None
 
     return None
+
+
+# ── Seções/grupos válidos - usados tanto pelas regras de palavra-chave acima
+# quanto pelo fallback de IA abaixo, pra nunca inventar um grupo que não
+# existe de fato no painel. ──
+SECOES_VALIDAS = {
+    "resfriados": ["BANDEJA", "PACOTE"],
+    "congelados": [
+        "GRUPO ASA", "GRUPO BANDEJA CONGELADA", "GRUPO INTEIROS",
+        "GRUPO MIUDOS", "GRUPO PEITO", "GRUPO PERNA",
+    ],
+    "iqf": ["IQF"],
+    "alimentos": ["ALIMENTOS"],
+}
+
+
+def classificar_com_ia(nome_produto):
+    """Fallback quando classificar_produto_novo() não consegue decidir por
+    palavra-chave: manda a descrição do produto pra Claude e pede pra
+    classificar, restrito às combinações de seção+grupo que já existem de
+    fato no painel (SECOES_VALIDAS acima).
+
+    Só roda se a secret ANTHROPIC_API_KEY estiver configurada no repositório.
+    Qualquer situação que não dê 100% de segurança - sem chave configurada,
+    erro de rede, resposta fora do formato esperado, ou o próprio modelo
+    dizendo que não tem certeza - devolve None, e quem chamou (inserir_cards_novos)
+    cai de volta pra seção 'Não Classificados' normalmente. Isso nunca trava
+    nem atrasa a atualização do estoque em si."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key or not (nome_produto or "").strip():
+        return None
+
+    opcoes = "\n".join(
+        f'- secao="{secao}", grupo="{grupo}"'
+        for secao, grupos in SECOES_VALIDAS.items()
+        for grupo in grupos
+    )
+    prompt = (
+        "Você classifica produtos do estoque de um frigorífico (frango, "
+        "peixe e alimentos preparados) em uma das combinações de seção+grupo "
+        "abaixo, com base só na descrição do produto (texto cru do ERP, "
+        "normalmente em maiúsculas e abreviado).\n\n"
+        f"Combinações válidas (use exatamente uma delas):\n{opcoes}\n\n"
+        f'Descrição do produto: "{nome_produto}"\n\n'
+        "Responda SOMENTE com um JSON, sem nenhum texto antes ou depois, "
+        'no formato {"secao": "...", "grupo": "..."}. Se não tiver certeza '
+        'suficiente, responda {"secao": null, "grupo": null}.'
+    )
+
+    try:
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": "claude-haiku-4-5",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=20,
+        )
+        resp.raise_for_status()
+        texto = resp.json()["content"][0]["text"].strip()
+        m = re.search(r"\{.*\}", texto, re.S)
+        if not m:
+            return None
+        obj = json.loads(m.group(0))
+        secao, grupo = obj.get("secao"), obj.get("grupo")
+        if secao in SECOES_VALIDAS and grupo in SECOES_VALIDAS[secao]:
+            return (secao, grupo)
+        return None
+    except Exception as e:
+        print(f"AVISO - classificação por IA falhou pra '{nome_produto}': {e}")
+        return None
 
 
 
@@ -552,12 +632,31 @@ def inserir_cards_novos(html, data, linhas_brutas):
         destino = classificar_produto_novo(nome_produto)
 
         if destino is None:
+            # 1º fallback: pede pra IA (Claude) classificar pela descrição,
+            # restrito às seções/grupos que realmente existem no painel.
+            destino = classificar_com_ia(nome_produto)
+            if destino is not None:
+                avisos.append(
+                    f"código novo '{codigo}' ({nome_produto}) não bateu com "
+                    f"nenhuma palavra-chave conhecida - classificado por IA "
+                    f"em '{destino[0]}/{destino[1]}'."
+                )
+
+        if destino is None:
+            # 2º fallback (rede de segurança final): antes o item era
+            # descartado aqui (nenhum card criado, só um aviso no log do
+            # Actions que ninguém via) - por isso itens novos "sumiam" do
+            # painel sem explicação. Agora, mesmo sem conseguir classificar
+            # nem por palavra-chave nem por IA, o card é sempre criado, na
+            # seção "Não Classificados" - fica visível no painel e só
+            # precisa ser movido manualmente pra seção certa quando der.
+            destino = ("outros", "NÃO CLASSIFICADO")
             avisos.append(
-                f"código novo '{codigo}' ({nome_produto}) não tem card e a "
-                f"descrição não deu pra classificar com segurança - card "
-                f"NÃO foi criado automaticamente, precisa adicionar manualmente uma vez."
+                f"código novo '{codigo}' ({nome_produto}) não bateu com "
+                f"nenhuma palavra-chave conhecida e a IA não teve certeza (ou "
+                f"não está configurada) - card criado em 'Não Classificados', "
+                f"mova manualmente pra seção certa quando puder."
             )
-            continue
 
         secao, grupo_label = destino
         m_peso = re.search(r"CX\s+([\d,.]+)\s*KG", nome_produto, re.I)
