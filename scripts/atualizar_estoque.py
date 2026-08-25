@@ -974,8 +974,92 @@ def carregar_precos(csv_text):
                 f"AVISO - preço de '{nome}' (seção '{secao_ref}') está "
                 f"duplicado na planilha - usando a última linha encontrada."
             )
-        precos[chave] = valores
+        precos[chave] = {"nome": nome, "valores": valores}
     return precos
+
+
+# ── Como montar um card de preço novo, por data_sec ──
+# Diferente do card de estoque (onde a seção precisa ser "adivinhada" pela
+# descrição), aqui a própria planilha já diz a seção via "Seção
+# (referência)" - então um produto novo na Tabela de Preços pode ser
+# colocado direto no lugar certo, sem incerteza nenhuma.
+TEMPLATE_CARD_PRECO_POR_DATA_SEC = {
+    "resfBdj": {"classe_card": "card-2 priority-card", "classe_nome": "name priority-name",
+                "sufixos_preco": [" main green", ""], "sufixo_nome": " resfriado bandeja"},
+    "resfInd": {"classe_card": "card-1 priority-card", "classe_nome": "name priority-name",
+                "sufixos_preco": [" main green"], "sufixo_nome": " resfriado individual"},
+    "copa": {"classe_card": "card-2 copa-card", "classe_nome": "name copa-name",
+             "sufixos_preco": [" main copa-price", ""], "sufixo_nome": ""},
+}
+TEMPLATE_CARD_PRECO_PADRAO = {
+    "classe_card": "card", "classe_nome": "name",
+    "sufixos_preco": [" main", "", ""], "sufixo_nome": "",
+}
+
+
+def montar_card_preco_novo_html(data_sec, nome_original, valores):
+    """Monta o HTML de um card de preço novo, no formato certo pra seção
+    (bandeja/individual/normal/copa), igual ao que o script faz pros cards
+    de estoque em montar_card_novo_html()."""
+    template = TEMPLATE_CARD_PRECO_POR_DATA_SEC.get(data_sec, TEMPLATE_CARD_PRECO_PADRAO)
+    nome_exibicao = slug_nome(nome_original)
+    nome_exibicao_esc = nome_exibicao.replace('"', "&quot;")
+    data_name = (nome_original.strip().lower() + template["sufixo_nome"]).replace('"', "&quot;")
+
+    spans_html = "".join(
+        f'<span class="p{suf}">{valores[i]}</span>'
+        for i, suf in enumerate(template["sufixos_preco"])
+        if i < len(valores) and valores[i]
+    )
+    return (
+        f'<div class="{template["classe_card"]}" data-sec="{data_sec}" data-name="{data_name}">'
+        f'<span class="{template["classe_nome"]}">{nome_exibicao_esc}</span>'
+        f'{spans_html}</div>'
+    ), data_name
+
+
+def inserir_cards_preco_novos(html, precos, nao_usados, trend):
+    """Cria um card pra cada linha de preço da planilha que não bateu com
+    nenhum card existente (nao_usados) - inserido no final da seção certa
+    (data_sec), igual ao inserir_cards_novos() faz no painel de estoque.
+    Marca a tendência do card novo como 'new'. Devolve o HTML atualizado."""
+    inseridos = []
+    for chave in nao_usados:
+        data_sec, _ = chave
+        info = precos[chave]
+        card_html, data_name = montar_card_preco_novo_html(data_sec, info["nome"], info["valores"])
+
+        secao_re = re.compile(r'<div class="section[^"]*" data-sec="' + re.escape(data_sec) + r'">')
+        m_secao = secao_re.search(html)
+        if not m_secao:
+            print(f"AVISO - preço de '{info['nome']}': seção '{data_sec}' não existe no HTML - card NÃO foi criado.")
+            continue
+        secao_end = _find_matching_div_end(html, m_secao.start())
+        if secao_end == -1:
+            print(f"AVISO - preço de '{info['nome']}': não consegui delimitar a seção '{data_sec}' no HTML - card NÃO foi criado.")
+            continue
+
+        bloco_secao = html[m_secao.start():secao_end]
+        idx_body = bloco_secao.find('<div class="section-body">')
+        if idx_body == -1:
+            print(f"AVISO - preço de '{info['nome']}': não achei o corpo da seção '{data_sec}' - card NÃO foi criado.")
+            continue
+        body_end = _find_matching_div_end(bloco_secao, idx_body)
+        if body_end == -1:
+            print(f"AVISO - preço de '{info['nome']}': não consegui delimitar o corpo da seção '{data_sec}' - card NÃO foi criado.")
+            continue
+
+        ponto_insercao = body_end - len("</div>")
+        novo_bloco_secao = bloco_secao[:ponto_insercao] + card_html + bloco_secao[ponto_insercao:]
+        html = html[: m_secao.start()] + novo_bloco_secao + html[secao_end:]
+
+        trend[data_name] = "new"
+        inseridos.append(info["nome"])
+
+    if inseridos:
+        print(f"OK - {len(inseridos)} card(s) de preço novo(s) criado(s) automaticamente: {', '.join(inseridos)}")
+
+    return html
 
 
 def atualizar_precos_html(html, precos):
@@ -994,19 +1078,19 @@ def atualizar_precos_html(html, precos):
     # tem "fut wings trad (coxinha emp)", card tem "fut wings trad coxinha
     # empanada") - sem isso, só bateria em correspondência exatamente igual.
     por_secao = {}
-    for (data_sec, nome_norm), valores in precos.items():
-        por_secao.setdefault(data_sec, []).append((nome_norm, valores))
+    for (data_sec, nome_norm), info in precos.items():
+        por_secao.setdefault(data_sec, []).append((nome_norm, info))
 
     nomes_usados = set()
 
-    def _achar_valores(data_sec, nome_norm_card):
+    def _achar_info(data_sec, nome_norm_card):
         chave = (data_sec, nome_norm_card)
         if chave in precos:
             nomes_usados.add(chave)
             return precos[chave]
         # fallback: prefixo em qualquer direção, só dentro da mesma seção
         candidatos = [
-            (n, v) for n, v in por_secao.get(data_sec, [])
+            (n, info) for n, info in por_secao.get(data_sec, [])
             if len(n) >= 6 and (n.startswith(nome_norm_card) or nome_norm_card.startswith(n))
         ]
         if len(candidatos) == 1:
@@ -1022,9 +1106,10 @@ def atualizar_precos_html(html, precos):
         if sufixo and nome_essencial.lower().endswith(sufixo):
             nome_essencial = nome_essencial[: -len(sufixo)]
 
-        novos_valores = _achar_valores(data_sec, _normalizar_nome_preco(nome_essencial))
-        if novos_valores is None:
+        info = _achar_info(data_sec, _normalizar_nome_preco(nome_essencial))
+        if info is None:
             return m.group(0)
+        novos_valores = info["valores"]
 
         spans = list(re.finditer(r'<span class="p([^"]*)">([^<]*)</span>', inner))
         if not spans:
@@ -1066,9 +1151,13 @@ def atualizar_precos_html(html, precos):
 
     nao_usados = set(precos.keys()) - nomes_usados
     if nao_usados:
-        print(f"AVISO - {len(nao_usados)} linha(s) de preço da planilha não bateram com nenhum card do HTML:")
+        print(f"AVISO - {len(nao_usados)} linha(s) de preço da planilha não bateram com nenhum card do HTML - tentando criar card novo pra cada uma:")
         for data_sec, nome_norm in sorted(nao_usados):
             print(f"  - seção '{data_sec}': '{nome_norm}'")
+        # A "Seção (referência)" da planilha já diz exatamente onde o produto
+        # deve entrar - diferente do estoque, aqui não tem adivinhação por
+        # palavra-chave: se a seção existe no HTML, o card é criado ali.
+        new_html = inserir_cards_preco_novos(new_html, precos, nao_usados, trend)
 
     new_trend_str = json.dumps(trend, ensure_ascii=False)
     new_html, n_subs = re.subn(
