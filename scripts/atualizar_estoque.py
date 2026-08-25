@@ -7,6 +7,15 @@ Requer 1 GitHub Secret:
                      (Planilha Google -> Arquivo -> Compartilhar ->
                       Publicar na Web -> escolher a aba -> formato CSV)
 
+Secrets opcionais (o script funciona sem elas, só fica sem o recurso
+correspondente):
+  GSHEET_VALIDADES_CSV_URL   -> botão "ver validades" de cada card
+  GSHEET_PRECOS_CSV_URL      -> tabela-precos.html
+  GSHEET_PEDIDOS_CSV_URL     -> pedidos-em-aberto.html
+  GSHEET_PROGRAMACAO_CSV_URL -> botão "🚚 programação" de cada card do
+                                 estoque (planilha de programação de
+                                 cargas, cruzada pela coluna CÓDIGO PROTHEUS)
+
 Este script pode ser disparado de duas formas (ambas já configuradas no
 workflow):
   1) De hora em hora (agendado), como rede de segurança
@@ -33,6 +42,7 @@ CSV_URL = os.environ["GSHEET_CSV_URL"]
 VALIDADES_CSV_URL = os.environ.get("GSHEET_VALIDADES_CSV_URL")
 PRECOS_CSV_URL = os.environ.get("GSHEET_PRECOS_CSV_URL")
 PEDIDOS_CSV_URL = os.environ.get("GSHEET_PEDIDOS_CSV_URL")
+PROGRAMACAO_CSV_URL = os.environ.get("GSHEET_PROGRAMACAO_CSV_URL")
 
 REPO_INDEX_PATH = "index.html"
 REPO_PRECOS_PATH = "tabela-precos.html"
@@ -1743,6 +1753,154 @@ def carregar_saldos(csv_text):
     return data, linhas_brutas
 
 
+def _parse_num_br(txt):
+    """Converte um número no formato brasileiro (2.250 = dois mil e
+    duzentos e cinquenta; 2,25 = dois vírgula vinte e cinco) pra float.
+    Retorna None se estiver vazio/ilegível - o front trata isso como "-"."""
+    txt = (txt or "").strip()
+    if not txt:
+        return None
+    try:
+        return float(txt.replace(".", "").replace(",", "."))
+    except ValueError:
+        return None
+
+
+def _data_para_ordenacao(data_str):
+    """Linhas sem data de carregamento (ex: "PROGRAMADA" sem data ainda
+    definida) vão pro fim da lista - as demais ficam em ordem cronológica."""
+    try:
+        return datetime.strptime((data_str or "").strip(), "%d/%m/%Y")
+    except ValueError:
+        return datetime.max
+
+
+def carregar_programacao_cargas(csv_text):
+    """Lê a planilha de programação de cargas (publicada como CSV) e agrupa
+    as linhas por Código Protheus do produto - é isso que alimenta o botão
+    "🚚 programação" de cada card do estoque, mostrando só as cargas
+    daquele produto específico.
+
+    Duas particularidades da planilha original (confirmadas com um export
+    real dela) que essa função precisa tratar:
+
+    1. Pode ter uma linha em branco antes do cabeçalho de verdade - por
+       isso o cabeçalho é localizado procurando a linha que contém
+       "CÓDIGO PROTHEUS", em vez de assumir que é sempre a linha 1.
+    2. Os dados de cada "viagem" (FILIAL, DATA CARREGAMENTO, VIAGEM_MAE,
+       STATUS, NF, DATA/HORA FAT., PLACAS, PEDIDO) só vêm preenchidos na
+       primeira linha do carregamento; nas linhas seguintes (outros
+       produtos da mesma carga) essas colunas ficam em branco - é o
+       "preenche uma vez só" comum de planilha feita à mão. Por isso essas
+       colunas são propagadas (forward-fill) da última linha em que
+       apareceram preenchidas. GRUPO/EMBALAGEM, LOCAL DE EMBARQUE, CÓDIGO,
+       CÓDIGO PROTHEUS, PRODUTO, Kg PROGR. e Kg FAT. sempre vêm
+       preenchidas linha a linha (não são propagadas).
+    """
+    linhas_csv = list(csv.reader(StringIO(csv_text)))
+
+    def _norm(h):
+        return _sem_acento((h or "").strip().upper())
+
+    idx_cabecalho = None
+    for i, r in enumerate(linhas_csv):
+        if any(_norm(c) in ("CODIGO PROTHEUS",) for c in r):
+            idx_cabecalho = i
+            break
+    if idx_cabecalho is None:
+        return {}, {}
+
+    cabecalho = linhas_csv[idx_cabecalho]
+    col_idx = {_norm(h): i for i, h in enumerate(cabecalho)}
+
+    def _idx(*nomes):
+        for nome in nomes:
+            i = col_idx.get(_norm(nome))
+            if i is not None:
+                return i
+        return None
+
+    idx_data = _idx("DATA CARREGAMENTO")
+    idx_viagem_mae = _idx("VIAGEM_MAE")
+    idx_status = _idx("STATUS")
+    idx_nf = _idx("NF")
+    idx_data_hora_fat = _idx("DATA/HORA FAT.", "DATA/HORA FAT")
+    idx_placas = _idx("PLACAS")
+    idx_pedido = _idx("PEDIDO")
+    idx_codigo_protheus = _idx("CÓDIGO PROTHEUS", "CODIGO PROTHEUS")
+    idx_produto = _idx("PRODUTO")
+    idx_kg_prog = _idx("KG PROGR.", "KG PROGR", "KG PROG.", "KG PROG")
+    idx_kg_fat = _idx("KG FAT.", "KG FAT")
+
+    def _cel(r, i):
+        if i is None or i >= len(r):
+            return ""
+        return (r[i] or "").strip()
+
+    # Propaga (forward-fill) os campos que descrevem a viagem/carga em si -
+    # na planilha eles só vêm preenchidos na primeira linha de cada
+    # carregamento; nas linhas seguintes (outros produtos da mesma carga)
+    # ficam em branco e herdam o último valor visto.
+    carry_data = carry_viagem_mae = carry_status = ""
+    # PLACAS/PEDIDO só são herdados DENTRO do mesmo carregamento - resetam
+    # sempre que uma nova viagem começa (linha com DATA CARREGAMENTO ou
+    # VIAGEM_MAE preenchidos), pra nunca mostrar a placa/pedido de uma
+    # carga antiga numa carga nova ainda sem essa info definida.
+    carry_placas = carry_pedido = ""
+    # NF e DATA/HORA FAT. nunca são propagados: cada produto só tem NF
+    # quando ELE especificamente já foi faturado - herdar da linha anterior
+    # passaria a impressão errada de que já tem NF quando na verdade ainda
+    # não tem (isso já aconteceu num caso real: um item "PROGRAMADA" dentro
+    # de uma carga já "EM TRÂNSITO", ele mesmo ainda sem NF própria).
+
+    programacao = {}
+    nomes_produto = {}
+    for r in linhas_csv[idx_cabecalho + 1:]:
+        if not any(c.strip() for c in r):
+            continue  # linha totalmente em branco entre grupos, se houver
+
+        codigo = _cel(r, idx_codigo_protheus)
+        if not codigo:
+            continue
+
+        val_data = _cel(r, idx_data)
+        val_viagem_mae = _cel(r, idx_viagem_mae)
+        nova_viagem = bool(val_data or val_viagem_mae)
+        if nova_viagem:
+            carry_placas = carry_pedido = ""
+
+        if val_data:
+            carry_data = val_data
+        if val_viagem_mae:
+            carry_viagem_mae = val_viagem_mae
+        if _cel(r, idx_status):
+            carry_status = _cel(r, idx_status)
+        if _cel(r, idx_placas):
+            carry_placas = _cel(r, idx_placas)
+        if _cel(r, idx_pedido):
+            carry_pedido = _cel(r, idx_pedido)
+
+        entrada = {
+            "data": carry_data,
+            "status": carry_status,
+            "nf": _cel(r, idx_nf),
+            "placas": carry_placas,
+            "pedido": carry_pedido,
+            "kgProg": _parse_num_br(_cel(r, idx_kg_prog)),
+            "kgFat": _parse_num_br(_cel(r, idx_kg_fat)),
+        }
+        programacao.setdefault(codigo, []).append(entrada)
+        if codigo not in nomes_produto:
+            nome_produto = _cel(r, idx_produto)
+            if nome_produto:
+                nomes_produto[codigo] = nome_produto
+
+    for linhas in programacao.values():
+        linhas.sort(key=lambda l: _data_para_ordenacao(l["data"]))
+
+    return programacao, nomes_produto
+
+
 def fmt_kg(v):
     if v is None:
         v = 0
@@ -1822,26 +1980,40 @@ def montar_card_novo_html(codigo, nome_produto, peso_cx, cod_cancao, saldo, seca
     )
 
 
-def inserir_cards_novos(html, data, linhas_brutas):
+def inserir_cards_novos(html, data, linhas_brutas, programacao=None, nomes_produto_programacao=None):
     """Para códigos que estão na planilha mas não têm card nenhum no HTML,
     cria o card automaticamente. Prefixos fixos (COMPRO, PEFLCANMI) vão
     direto para Alimentos Preparados; os demais são classificados pelo
     texto da descrição do produto (RESFRIADA/CONGELADA/IQF + tipo de
     corte). Só fica sem criar quando a descrição não dá pra classificar
-    com segurança - nesse caso o script avisa no log."""
+    com segurança - nesse caso o script avisa no log.
+
+    Também cria um card "SEM ESTOQUE" pra qualquer código que apareça na
+    planilha de programação de cargas mas não tenha estoque cadastrado
+    (produto zerado/descontinuado, mas com carga programada vindo) - assim
+    sempre existe um card clicável com o botão "🚚 programação", mesmo sem
+    saldo nenhum."""
+    programacao = programacao or {}
+    nomes_produto_programacao = nomes_produto_programacao or {}
+
     codigos_existentes = set(re.findall(r'card-code">([^<· ]+)', html))
 
     codigos_novos = [c for c in data.keys() if c not in codigos_existentes]
-    if not codigos_novos:
+    codigos_somente_programacao = [
+        c for c in programacao.keys()
+        if c not in codigos_existentes and c not in data
+    ]
+    if not codigos_novos and not codigos_somente_programacao:
         return html, []
 
     avisos = []
     inseridos = []
 
-    for codigo in codigos_novos:
-        linha = linhas_brutas.get(codigo, [])
-        nome_produto = linha[3] if len(linha) > 3 else codigo
+    itens = [(c, linhas_brutas.get(c, [])[3] if len(linhas_brutas.get(c, [])) > 3 else c, data.get(c, 0))
+             for c in codigos_novos]
+    itens += [(c, nomes_produto_programacao.get(c, c), 0) for c in codigos_somente_programacao]
 
+    for codigo, nome_produto, saldo in itens:
         destino = classificar_produto_novo(nome_produto)
 
         if destino is None:
@@ -1877,7 +2049,6 @@ def inserir_cards_novos(html, data, linhas_brutas):
         # e o card novo nascer sem o "Cx X kg" no cabeçalho.
         m_peso = re.search(r"CX\s+(?:[A-ZÇÃÕ]+\s+)?([\d,.]+)\s*KG", nome_produto, re.I)
         peso_cx = m_peso.group(1).replace(".", ",") if m_peso else ""
-        saldo = data.get(codigo, 0)
 
         cod_cancao = COD_CANCAO_FIXO.get(codigo, "")
         card_html = montar_card_novo_html(codigo, nome_produto, peso_cx, cod_cancao, saldo, secao)
@@ -1926,13 +2097,19 @@ def inserir_cards_novos(html, data, linhas_brutas):
     return html, inseridos
 
 
-def atualizar_html(html, data, validades=None, linhas_brutas=None):
+def atualizar_html(html, data, validades=None, linhas_brutas=None, programacao=None, nomes_produto_programacao=None):
     validades = validades or {}
     linhas_brutas = linhas_brutas or {}
+    programacao = programacao or {}
+    nomes_produto_programacao = nomes_produto_programacao or {}
 
     # ── Cria cards novos ANTES de atualizar os existentes, para que o saldo
-    # do card recém-criado já seja processado no mesmo ciclo. ──
-    html, _ = inserir_cards_novos(html, data, linhas_brutas)
+    # do card recém-criado já seja processado no mesmo ciclo. Isso inclui
+    # tanto itens genuinamente novos no estoque quanto itens que só têm
+    # programação de carga (sem estoque cadastrado ainda/mais) - esses
+    # últimos nascem "SEM ESTOQUE", só pra existir um card clicável com o
+    # botão "🚚 programação". ──
+    html, _ = inserir_cards_novos(html, data, linhas_brutas, programacao, nomes_produto_programacao)
 
     card_starts = [m.start() for m in re.finditer(r'<div class="card[^"]*" data-name=', html)]
     card_starts.append(len(html))
@@ -2010,16 +2187,44 @@ def atualizar_html(html, data, validades=None, linhas_brutas=None):
                 block, count=1,
             )
 
+        # ── Gerencia o botão "🚚 programação" independente do estoque ──
+        # (fica sempre depois de qualquer botão "ver validades" já tratado
+        # acima - o anchor abaixo pega o fim de card-info seja lá o que
+        # tiver dentro dele nesse ponto.)
+        tem_prog = bool(programacao.get(code))
+        tem_botao_prog = bool(re.search(r'<button class="prog-btn"[^>]*data-code="' + re.escape(code) + r'"', block))
+        if tem_prog and not tem_botao_prog:
+            btn_prog = f' <button class="prog-btn" onclick="toggleProg(this)" data-code="{code}">🚚 programação</button>'
+            novo_block = re.sub(
+                r'(<div class="card-info">.*?)(</div>\s*<div class="card-stock">)',
+                lambda m2: m2.group(1) + btn_prog + m2.group(2),
+                block, count=1, flags=re.S,
+            )
+            if novo_block != block:
+                block = novo_block
+        elif not tem_prog and tem_botao_prog:
+            block = re.sub(r'\s*<button class="prog-btn"[^>]*>[^<]*</button>', '', block, count=1)
+
         if code not in data:
-            # Regra: se o código não aparece mais na planilha de estoque,
-            # o produto foi descontinuado/removido do ERP - o card some do
-            # painel (não fica com o saldo antigo parado). Se o código
-            # reaparecer numa planilha futura, o card é recriado automaticamente.
-            # O "rastro" (fechamentos de grupo/seção, próximo cabeçalho)
-            # é sempre preservado, mesmo quando o card é removido.
-            segments.append(rastro)
-            continue
-        val = data[code]
+            if tem_prog:
+                # Exceção: o produto saiu da planilha de estoque (acabou/
+                # descontinuado), mas ainda tem programação de carga vindo -
+                # em vez de apagar o card, mantém ele marcado "SEM ESTOQUE",
+                # só pra continuar existindo um card clicável com o botão
+                # "🚚 programação" (é só isso que sobra dele nesse caso).
+                val = 0
+            else:
+                # Regra: se o código não aparece mais na planilha de estoque
+                # nem tem programação pendente, o produto foi descontinuado/
+                # removido do ERP - o card some do painel (não fica com o
+                # saldo antigo parado). Se o código reaparecer numa planilha
+                # futura, o card é recriado automaticamente. O "rastro"
+                # (fechamentos de grupo/seção, próximo cabeçalho) é sempre
+                # preservado, mesmo quando o card é removido.
+                segments.append(rastro)
+                continue
+        else:
+            val = data[code]
         was_nostock = 'data-status="no-stock"' in block
         classe_atual_m = re.search(r'<div class="card ([^"]*)" data-name=', block)
         tinha_has_obs = classe_atual_m and "has-obs" in classe_atual_m.group(1)
@@ -2066,6 +2271,13 @@ def atualizar_html(html, data, validades=None, linhas_brutas=None):
     new_html = re.sub(
         r"var VALIDADES = (\{.*?\})\s*;",
         "var VALIDADES = " + json.dumps(validades, ensure_ascii=False) + ";",
+        new_html, count=1, flags=re.S,
+    )
+
+    # Atualiza os dados usados pelo botão "🚚 programação" de cada card
+    new_html = re.sub(
+        r"var PROGRAMACAO = (\{.*?\})\s*;",
+        "var PROGRAMACAO = " + json.dumps(programacao, ensure_ascii=False) + ";",
         new_html, count=1, flags=re.S,
     )
 
@@ -2790,15 +3002,27 @@ def main():
         validades_csv_text = baixar_csv(VALIDADES_CSV_URL)
         validades = carregar_validades(validades_csv_text)
 
+    programacao = {}
+    nomes_produto_programacao = {}
+    if PROGRAMACAO_CSV_URL:
+        try:
+            programacao_csv_text = baixar_csv(PROGRAMACAO_CSV_URL)
+            programacao, nomes_produto_programacao = carregar_programacao_cargas(programacao_csv_text)
+        except Exception as e:
+            # Não é uma seção com validação própria (não bloqueia o resto) -
+            # se a planilha de programação falhar, o estoque segue publicado
+            # normalmente, só sem o botão "🚚 programação" atualizado.
+            print(f"AVISO - falha ao carregar programação de cargas: {e}")
+
     with open(REPO_INDEX_PATH, encoding="utf-8") as f:
         html = f.read()
 
     try:
         validar_estoque(data, html)
-        new_html = atualizar_html(html, data, validades, linhas_brutas)
+        new_html = atualizar_html(html, data, validades, linhas_brutas, programacao, nomes_produto_programacao)
         with open(REPO_INDEX_PATH, "w", encoding="utf-8") as f:
             f.write(new_html)
-        print(f"OK - {len(data)} códigos de estoque, {len(validades)} códigos com validade processados.")
+        print(f"OK - {len(data)} códigos de estoque, {len(validades)} códigos com validade, {len(programacao)} códigos com programação processados.")
     except ErroValidacao as e:
         houve_erro_bloqueante = True
         print("❌ ERRO DE VALIDAÇÃO (estoque) - index.html NÃO foi alterado, publicação cancelada pra esta seção:")
