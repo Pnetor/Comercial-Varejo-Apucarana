@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/31646274/README.md)
 [README.md](https://github.com/user-attachments/files/31436092/README.md)
 # Comercial-Varejo-Apucarana
 
@@ -99,10 +100,23 @@ objeto na lista `TEMPLATES` dentro do `<script>` de `emails-padrao.html`.
 
 ## PWA (instalável)
 
-`index.html` e `tabela-precos.html` registram um service worker
-(`sw.js`) e referenciam um `manifest.json`, permitindo instalar o painel
-como app (ícone na tela, abre sem barra de navegador). As páginas HTML
-são sempre buscadas da rede primeiro (nunca mostra estoque/preço
-desatualizado só porque tem internet); o cache só entra em ação se a
-conexão cair no meio de uma consulta. `pedidos-em-aberto.html` não
-registra service worker.
+`index.html`, `tabela-precos.html` e `emails-padrao.html` registram um
+service worker (`sw.js`) e referenciam o `manifest.json`, permitindo
+instalar o painel como app (ícone na tela, abre sem barra de navegador).
+As páginas HTML são sempre buscadas da rede primeiro (nunca mostra
+estoque/preço desatualizado só porque tem internet); o cache só entra em
+ação se a conexão cair no meio de uma consulta - só ícones e manifest
+ficam em cache-first. `pedidos-em-aberto.html` não registra service
+worker (mas continua abrindo normalmente pelas abas).
+
+**Atenção ao nome do arquivo**: o service worker precisa estar no
+repositório como **`sw.js`** exatamente. Se ele for enviado com outro
+nome (ex: `sw.txt`), o navegador toma 404 ao registrar e o painel deixa
+de ser instalável - o site continua funcionando, mas sem o comportamento
+de app.
+
+Todas as páginas usam `viewport-fit=cover` no `<meta name="viewport">` e
+somam `env(safe-area-inset-top)` no `padding` do cabeçalho. Isso é
+obrigatório: sem o `viewport-fit=cover`, o `env()` vale sempre 0 e o
+cabeçalho (com as abas de navegação) fica embaixo do relógio/bateria do
+celular quando o painel abre como app instalado.
