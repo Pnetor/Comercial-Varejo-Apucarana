@@ -2363,6 +2363,12 @@ def _normalizar_nome_preco(txt):
     return nome
 
 
+def _palavras_nome_preco(nome_normalizado):
+    """Conjunto de palavras de um nome já normalizado, usado no pareamento
+    por semelhança (ver _achar_info em atualizar_precos_html)."""
+    return {p for p in re.split(r"[^a-z0-9,]+", nome_normalizado) if p}
+
+
 # ── Mapa "Seção (referência)" (coluna da planilha) -> data-sec (do HTML) ──
 # Sem esse mapa, o script não tinha como saber que "coxa pilão" na aba de
 # Preços podia ser TRÊS produtos diferentes (bandeja resfriada, individual
@@ -2568,7 +2574,7 @@ def atualizar_precos_html(html, precos):
         if chave in precos:
             nomes_usados.add(chave)
             return precos[chave]
-        # fallback: prefixo em qualquer direção, só dentro da mesma seção
+        # fallback 1: prefixo em qualquer direção, só dentro da mesma seção
         candidatos = [
             (n, info) for n, info in por_secao.get(data_sec, [])
             if len(n) >= 6 and (n.startswith(nome_norm_card) or nome_norm_card.startswith(n))
@@ -2576,6 +2582,34 @@ def atualizar_precos_html(html, precos):
         if len(candidatos) == 1:
             nomes_usados.add((data_sec, candidatos[0][0]))
             return candidatos[0][1]
+        # fallback 2: conjunto de palavras contido no outro, na mesma seção.
+        # Cobre o caso real de alguém completar o nome do produto na planilha,
+        # inserindo palavra NO MEIO (ex: card "file meio peito 1kg" e planilha
+        # "file meio peito indiv ou pct 1kg"): o prefixo não pega isso, e sem
+        # esse fallback o script criava um card DUPLICADO do mesmo produto -
+        # ficavam dois na tabela, e os reajustes seguintes só entravam em um
+        # deles. Só aceita quando existe exatamente UM candidato na seção,
+        # pra nunca fundir produtos parecidos mas distintos (ex: "filé de
+        # peito" x "filé de peito interfolhado" continuam separados, porque
+        # cada um casa exato antes de chegar aqui).
+        palavras_card = _palavras_nome_preco(nome_norm_card)
+        if len(palavras_card) >= 2:
+            candidatos = []
+            for n, info in por_secao.get(data_sec, []):
+                palavras_planilha = _palavras_nome_preco(n)
+                if len(palavras_planilha) < 2:
+                    continue
+                if palavras_card <= palavras_planilha or palavras_planilha <= palavras_card:
+                    candidatos.append((n, info))
+            if len(candidatos) == 1:
+                print(
+                    f"AVISO - preço: card '{nome_norm_card}' (seção {data_sec}) "
+                    f"foi pareado com a linha '{candidatos[0][0]}' da planilha "
+                    "por semelhança de palavras - o nome na planilha mudou. "
+                    "Card reaproveitado em vez de criar um duplicado."
+                )
+                nomes_usados.add((data_sec, candidatos[0][0]))
+                return candidatos[0][1]
         return None
 
     def processa_card(m):
