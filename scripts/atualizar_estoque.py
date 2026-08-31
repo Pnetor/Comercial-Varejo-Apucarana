@@ -1842,16 +1842,21 @@ def carregar_programacao_cargas(csv_text):
     # carregamento; nas linhas seguintes (outros produtos da mesma carga)
     # ficam em branco e herdam o último valor visto.
     carry_data = carry_viagem_mae = carry_status = ""
-    # PLACAS/PEDIDO só são herdados DENTRO do mesmo carregamento - resetam
-    # sempre que uma nova viagem começa (linha com DATA CARREGAMENTO ou
-    # VIAGEM_MAE preenchidos), pra nunca mostrar a placa/pedido de uma
-    # carga antiga numa carga nova ainda sem essa info definida.
-    carry_placas = carry_pedido = ""
-    # NF e DATA/HORA FAT. nunca são propagados: cada produto só tem NF
-    # quando ELE especificamente já foi faturado - herdar da linha anterior
-    # passaria a impressão errada de que já tem NF quando na verdade ainda
-    # não tem (isso já aconteceu num caso real: um item "PROGRAMADA" dentro
-    # de uma carga já "EM TRÂNSITO", ele mesmo ainda sem NF própria).
+    # PLACAS/PEDIDO/NF/DATA-HORA FAT. só são herdados por linha de
+    # CONTINUAÇÃO PURA - aquela que só traz produto e quilos, sem trazer
+    # nenhuma informação própria de carga. Duas situações resetam esses
+    # campos (passando a valer só o que a própria linha traz, mesmo que
+    # vazio):
+    #   1. nova viagem: linha com DATA CARREGAMENTO ou VIAGEM_MAE preenchidos;
+    #   2. status próprio: linha que traz o STATUS dela mesma, ou seja, um
+    #      bloco de itens em situação diferente dentro do mesmo carregamento
+    #      (caso real: itens "PROGRAMADA" listados dentro de uma carga já
+    #      "EM TRÂNSITO" - esses ainda não têm NF, e herdar a NF da carga
+    #      passaria a impressão errada de que já foram faturados).
+    # Assim os outros produtos da mesma carga faturada mostram a NF que
+    # realmente é deles (antes apareciam com "-", o que fazia a carga
+    # parecer sem nota), sem inventar NF pra quem ainda não tem.
+    carry_placas = carry_pedido = carry_nf = carry_fat = ""
 
     programacao = {}
     nomes_produto = {}
@@ -1865,25 +1870,33 @@ def carregar_programacao_cargas(csv_text):
 
         val_data = _cel(r, idx_data)
         val_viagem_mae = _cel(r, idx_viagem_mae)
+        val_status = _cel(r, idx_status)
         nova_viagem = bool(val_data or val_viagem_mae)
-        if nova_viagem:
-            carry_placas = carry_pedido = ""
+        # Linha que traz informação própria de carga (nova viagem ou status
+        # próprio) zera o que era herdado - o que valer daqui pra frente é
+        # o que essa linha declarar.
+        if nova_viagem or val_status:
+            carry_placas = carry_pedido = carry_nf = carry_fat = ""
 
         if val_data:
             carry_data = val_data
         if val_viagem_mae:
             carry_viagem_mae = val_viagem_mae
-        if _cel(r, idx_status):
-            carry_status = _cel(r, idx_status)
+        if val_status:
+            carry_status = val_status
         if _cel(r, idx_placas):
             carry_placas = _cel(r, idx_placas)
         if _cel(r, idx_pedido):
             carry_pedido = _cel(r, idx_pedido)
+        if _cel(r, idx_nf):
+            carry_nf = _cel(r, idx_nf)
+        if _cel(r, idx_data_hora_fat):
+            carry_fat = _cel(r, idx_data_hora_fat)
 
         entrada = {
             "data": carry_data,
             "status": carry_status,
-            "nf": _cel(r, idx_nf),
+            "nf": carry_nf,
             "placas": carry_placas,
             "pedido": carry_pedido,
             "kgProg": _parse_num_br(_cel(r, idx_kg_prog)),
