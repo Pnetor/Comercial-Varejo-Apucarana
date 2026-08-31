@@ -372,7 +372,7 @@ var TEMPLATES = [
     fields: [
       { key: 'razaoSocial', label: 'Razão Social', type: 'text', placeholder: 'Ex: Comercial Varejo Apucarana LTDA', required: true },
       { key: 'cnpj', label: 'CNPJ', type: 'text', placeholder: '00.000.000/0000-00', required: true },
-      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true },
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'email', placeholder: 'supervisor@gtf.com.br', required: true },
       { key: 'observacao', label: 'Observação', type: 'textarea', placeholder: 'Alguma informação extra sobre o cadastro (opcional)', required: false }
     ],
     // "cc" é opcional por modelo - quando existe, esses endereços entram
@@ -406,7 +406,7 @@ var TEMPLATES = [
       { key: 'razaoSocial', label: 'Razão Social', type: 'text', placeholder: 'Ex: Comercial Varejo Apucarana LTDA', required: true },
       { key: 'codigo', label: 'Código', type: 'text', placeholder: 'Código do cliente', required: true },
       { key: 'supervisorNome', label: 'Nome do supervisor', type: 'text', placeholder: 'Ex: Maria Silva', required: true },
-      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'email', placeholder: 'supervisor@gtf.com.br', required: true }
     ],
     cc: function(v) {
       return [v.supervisorEmail];
@@ -438,7 +438,7 @@ var TEMPLATES = [
       { key: 'limiteSugerido', label: 'Limite sugerido', type: 'text', placeholder: 'Ex: R$ 5.000,00', required: true },
       { key: 'formaPagamentoSugerido', label: 'Forma de pagamento sugerido', type: 'text', placeholder: 'Ex: Boleto 28 dias', required: true },
       { key: 'observacao', label: 'Observação', type: 'textarea', placeholder: 'Alguma informação extra (opcional)', required: false },
-      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'email', placeholder: 'supervisor@gtf.com.br', required: true }
     ],
     cc: function(v) {
       return [v.supervisorEmail];
@@ -474,7 +474,7 @@ var TEMPLATES = [
       { key: 'codigo', label: 'Código do cliente', type: 'text', placeholder: 'Código do cliente', required: true },
       { key: 'nf', label: 'NF', type: 'text', placeholder: 'Número da nota fiscal', required: true },
       { key: 'observacao', label: 'Observação', type: 'textarea', placeholder: 'Alguma informação extra (opcional)', required: false },
-      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'email', placeholder: 'supervisor@gtf.com.br', required: true }
     ],
     cc: function(v) {
       return [v.supervisorEmail];
@@ -509,11 +509,11 @@ var TEMPLATES = [
       { key: 'codigo', label: 'Código do cliente', type: 'text', placeholder: 'Código do cliente', required: true },
       { key: 'nomeCompleto', label: 'Nome completo', type: 'text', placeholder: 'Nome completo do cliente', required: true },
       { key: 'enderecoCompleto', label: 'Endereço completo', type: 'text', placeholder: 'Endereço completo', required: true },
-      { key: 'telefone', label: 'Telefone / WhatsApp', type: 'text', placeholder: '(00) 00000-0000', required: true },
+      { key: 'telefone', label: 'Telefone / WhatsApp', type: 'tel', placeholder: '(00) 00000-0000', required: true },
       { key: 'ausenciaCupom', label: 'Na ausência do cupom fiscal, informar', hint: '(só preencha se não tiver o cupom)', type: 'textarea', placeholder: 'Ex: data e local aproximado da compra', required: false },
       { key: 'quantidadeAdquirida', label: 'Quantidade adquirida', type: 'text', placeholder: 'Ex: 5 unidades', required: true },
       { key: 'quantidadeInconformidade', label: 'Quantidade com a inconformidade relatada', type: 'text', placeholder: 'Ex: 1 unidade', required: true },
-      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'email', placeholder: 'supervisor@gtf.com.br', required: true }
     ],
     cc: function(v) {
       return [v.supervisorEmail];
@@ -561,7 +561,7 @@ var TEMPLATES = [
       { key: 'valorNf', label: 'Valor NF', type: 'text', placeholder: 'Ex: R$ 1.500,00', required: true },
       { key: 'emissao', label: 'Emissão', type: 'text', placeholder: 'DD/MM/AAAA', required: true },
       { key: 'vendedor', label: 'Vendedor', type: 'text', placeholder: 'Seu nome', required: true },
-      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'email', placeholder: 'supervisor@gtf.com.br', required: true }
     ],
     cc: function(v) {
       return [v.supervisorEmail];
@@ -609,7 +609,7 @@ var TEMPLATES = [
       { key: 'pedidosErp', label: 'Pedidos ERP', type: 'text', placeholder: 'Números dos pedidos no ERP', required: true },
       { key: 'dataCarregamento', label: 'Data de Carregamento', type: 'text', placeholder: 'DD/MM/AAAA', required: true },
       { key: 'produtos', label: 'Produtos', type: 'textarea', placeholder: 'Liste os produtos da carga', required: true },
-      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'text', placeholder: 'supervisor@gtf.com.br', required: true }
+      { key: 'supervisorEmail', label: 'E-mail do supervisor', hint: '(sempre vai em cópia)', type: 'email', placeholder: 'supervisor@gtf.com.br', required: true }
     ],
     cc: function(v) {
       return [v.supervisorEmail];
@@ -693,7 +693,15 @@ function abrirModal(template) {
       input = document.createElement('textarea');
     } else {
       input = document.createElement('input');
-      input.type = 'text';
+      // Respeita o tipo declarado no modelo (email/tel/number/date...), pra o
+      // celular já abrir o teclado certo (com @ pra e-mail, numérico pra
+      // telefone) e o navegador conferir o formato antes de gerar o e-mail.
+      input.type = f.type || 'text';
+      if (f.type === 'email') {
+        input.autocapitalize = 'none';
+        input.autocomplete = 'email';
+        input.spellcheck = false;
+      }
     }
     input.id = 'campo_' + f.key;
     input.placeholder = f.placeholder || '';
