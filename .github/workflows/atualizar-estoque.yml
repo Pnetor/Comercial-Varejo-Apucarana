@@ -8,7 +8,13 @@ on:
     - cron: '30 11-23 * * *'
   repository_dispatch:
     types: [estoque-atualizado] # disparado pelo Apps Script da Planilha Google
-  workflow_dispatch: {} # permite rodar manualmente pelo botão "Run workflow" no GitHub
+  workflow_dispatch: # permite rodar manualmente pelo botão "Run workflow" no GitHub
+    inputs:
+      forcar_validacao:
+        description: 'Forçar publicação mesmo com queda grande (marcar só quando a queda é real, não erro de planilha)'
+        type: boolean
+        default: false
+        required: false
 
 jobs:
   atualizar:
@@ -32,6 +38,11 @@ jobs:
           GSHEET_PRECOS_CSV_URL: ${{ secrets.GSHEET_PRECOS_CSV_URL }}
           GSHEET_PEDIDOS_CSV_URL: ${{ secrets.GSHEET_PEDIDOS_CSV_URL }}
           GSHEET_PROGRAMACAO_CSV_URL: ${{ secrets.GSHEET_PROGRAMACAO_CSV_URL }}
+          # Só true quando a rodada foi disparada manualmente com a caixinha
+          # "Forçar publicação..." marcada - nas rodadas automáticas (hora em
+          # hora) fica sempre false, ou seja, a trava de segurança continua
+          # valendo normalmente todo o resto do tempo.
+          FORCAR_VALIDACAO: ${{ github.event.inputs.forcar_validacao }}
           # Opcional: só é usada como fallback pra classificar item novo cuja
           # descrição não bate com nenhuma palavra-chave conhecida. Sem essa
           # secret, o script funciona normalmente (o item cai direto em
