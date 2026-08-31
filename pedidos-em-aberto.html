@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Pedidos em Aberto · Canção Alimentos</title>
 <style>
 :root{
@@ -285,7 +285,7 @@ body.light{--bg:#f5f6f8;--bg-panel:#fff;--bg-card:#fff;--line:#e3e7ec;--red:#c42
   --shadow-sm:0 1px 3px rgba(18,24,40,.06);--shadow-md:0 12px 32px rgba(18,24,40,.09)}
 body{background-image:radial-gradient(circle at 7% 9%,rgba(255,73,28,.08),transparent 28rem),
   radial-gradient(circle at 93% 32%,rgba(255,185,78,.055),transparent 34rem);font-family:Inter,'Segoe UI',system-ui,sans-serif}
-header{min-height:250px;padding:24px max(24px,calc((100vw - 1180px)/2)) 76px;text-align:left;border:0;background:
+header{min-height:250px;padding:calc(24px + env(safe-area-inset-top, 0px)) max(24px,calc((100vw - 1180px)/2)) 76px;text-align:left;border:0;background:
   radial-gradient(circle at 84% -45%,rgba(255,198,126,.4),transparent 35%),linear-gradient(128deg,#ff491c,#ed1b12 48%,#b90c0c);overflow:hidden}
 header::after{content:'';position:absolute;width:460px;height:460px;right:-180px;top:-300px;
   border:70px solid rgba(255,255,255,.07);border-radius:48%;transform:rotate(-14deg);pointer-events:none}
@@ -321,7 +321,7 @@ header h1 span{color:#fff}header p{margin-top:7px;color:rgba(255,255,255,.8);fon
 .pedido-head{min-height:82px;padding:16px 18px}.pedido-head:hover{background:rgba(241,38,19,.05)}.pedido-head .num{color:var(--orange)}.pedido-head .status{border-radius:7px}
 .pedido-body{padding:0 18px 18px}.info-grid{padding:14px;border-radius:11px;background:var(--bg-panel)}table.prod-table{border:1px solid var(--line);border-radius:10px;overflow:hidden}
 table.prod-table th{background:var(--bg-panel)}.obs{border:1px solid var(--line)}
-@media(max-width:700px){header{min-height:225px;padding:14px 10px 70px}.tabs{position:relative;max-width:100%;margin:0 0 17px;overflow-x:auto;flex-wrap:nowrap}.tabs a{padding:7px 11px;white-space:nowrap}
+@media(max-width:700px){header{min-height:225px;padding:calc(14px + env(safe-area-inset-top, 0px)) 10px 70px}.tabs{position:relative;max-width:100%;margin:0 0 17px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap}.tabs a{padding:7px 11px;white-space:nowrap}
   .toolbar{position:absolute;top:72px;right:10px;margin:0}.brand-icon{width:44px;height:44px;border-radius:13px}.hero-eyebrow{font-size:7px}.hero-title{gap:10px}header h1{font-size:20px}header p{font-size:8px}
   .wrap{margin-top:-48px;padding:0 10px 40px}.summary{grid-template-columns:repeat(2,minmax(0,1fr));border-radius:16px}.summary .pill{min-height:78px;padding:13px}.summary .pill:nth-child(even){border-right:0}.summary .pill:nth-child(-n+2){border-bottom:1px solid var(--line)}
   .summary .pill b{font-size:20px}.search-row input{height:48px}.grid{grid-template-columns:1fr;gap:9px}.vend-card{min-height:116px}.detail-header{padding:14px}.pedido-head .right{gap:8px}.pedido-body{padding:0 12px 12px}}
