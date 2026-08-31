@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/31647234/README.md)
 [README.md](https://github.com/user-attachments/files/31646274/README.md)
 [README.md](https://github.com/user-attachments/files/31436092/README.md)
 # Comercial-Varejo-Apucarana
@@ -40,13 +41,28 @@ resultado faz sentido perto do que já estava publicado:
   planilha.
 - **Preços**: mesma lógica, comparando os preços atuais com os anteriores;
   um salto absurdo (mais de 50%) trava a atualização da tabela de preços.
-- **Pedidos em aberto**: mesma ideia, comparando a quantidade de
-  vendedores/pedidos.
+- **Pedidos em aberto**: aqui a regra é mais frouxa **de propósito**. A
+  quantidade de vendedores com pedido em aberto oscila muito por natureza
+  do negócio (um dia de faturamento forte tira metade dos pedidos da
+  planilha de uma vez), então uma queda grande **não bloqueia** a
+  publicação: só deixa um aviso no log. Bloqueia mesmo só quando o
+  resultado é implausível - planilha vazia (0 vendedores) ou sobrando
+  menos de 3 vendedores vindo de uma base bem maior, o que tem cara de
+  exportação cortada no meio.
 
 Quando uma dessas travas aciona, o job do GitHub Actions termina com erro
 (fica vermelho), mas as páginas que passaram na validação são commitadas
 normalmente - só a página com problema fica intacta, esperando a planilha
 ser corrigida.
+
+## Forçar publicação (ignorar a trava numa rodada)
+
+Se a trava de estoque ou preços acionar mas a queda for real, dá pra
+publicar sem mexer em código: aba **Actions** → workflow **Atualizar
+Estoque Apucarana** → botão **Run workflow** → marcar a caixinha
+**"Forçar publicação mesmo com queda grande"** → confirmar. Isso vale só
+pra aquela rodada; as rodadas automáticas (de hora em hora e as
+disparadas pela planilha) sempre rodam com a trava ligada.
 
 ## Itens novos: destaque, edição e pendências
 
