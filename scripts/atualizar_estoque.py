@@ -2834,6 +2834,12 @@ MINIMO_PARA_CHECAR_QUEDA = 5
 # Salto de preço maior que isso (pra mais ou pra menos) vira aviso.
 LIMITE_SALTO_PRECO = 0.5
 
+# Liga via input manual "forcar_validacao" (Actions → Run workflow) quando
+# uma queda grande é real (ex: vendedores concluíram um monte de pedido de
+# uma vez) e não planilha incompleta - ignora só a checagem de queda acima,
+# nas três seções, só nessa rodada.
+FORCAR_VALIDACAO = os.environ.get("FORCAR_VALIDACAO", "").strip().lower() in ("1", "true", "sim")
+
 
 def _contar_cards_estoque(html):
     return len(re.findall(r'<div class="card[^"]*" data-name="', html))
@@ -2847,7 +2853,7 @@ def validar_estoque(data, html_atual):
             "planilha não está mais publicada na web"
         ])
     base = _contar_cards_estoque(html_atual)
-    if base >= MINIMO_PARA_CHECAR_QUEDA and len(data) < base * LIMITE_QUEDA:
+    if not FORCAR_VALIDACAO and base >= MINIMO_PARA_CHECAR_QUEDA and len(data) < base * LIMITE_QUEDA:
         raise ErroValidacao([
             f"o número de itens de estoque caiu de {base} pra {len(data)} "
             f"(mais de {int(LIMITE_QUEDA * 100)}%) de uma rodada pra outra - "
@@ -2895,7 +2901,7 @@ def validar_precos(precos, html_atual):
         ])
 
     base = _contar_cards_precos(html_atual)
-    if base >= MINIMO_PARA_CHECAR_QUEDA and len(precos) < base * LIMITE_QUEDA:
+    if not FORCAR_VALIDACAO and base >= MINIMO_PARA_CHECAR_QUEDA and len(precos) < base * LIMITE_QUEDA:
         raise ErroValidacao([
             f"o número de produtos de preço caiu de {base} pra {len(precos)} "
             f"(mais de {int(LIMITE_QUEDA * 100)}%) de uma rodada pra outra - "
@@ -2970,7 +2976,7 @@ def validar_pedidos(pedidos, html_atual):
         ])
 
     base = _contar_vendedores_pedidos(html_atual)
-    if base >= MINIMO_PARA_CHECAR_QUEDA and len(pedidos) < base * LIMITE_QUEDA:
+    if not FORCAR_VALIDACAO and base >= MINIMO_PARA_CHECAR_QUEDA and len(pedidos) < base * LIMITE_QUEDA:
         raise ErroValidacao([
             f"o número de vendedores caiu de {base} pra {len(pedidos)} "
             f"(mais de {int(LIMITE_QUEDA * 100)}%) de uma rodada pra outra - "
