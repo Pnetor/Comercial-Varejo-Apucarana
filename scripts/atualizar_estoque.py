@@ -1691,7 +1691,15 @@ def classificar_com_ia(nome_produto):
 
 
 def baixar_csv(url):
-    resp = requests.get(url)
+    # Pede versão fresca: o CSV "publicado na web" do Google fica em cache por
+    # alguns minutos, e como essa rodada normalmente começa poucos segundos
+    # depois da planilha ser editada, sem isso é fácil ler a versão anterior
+    # (sintoma: "editei a planilha e o site não mudou nada" - e aí a mudança
+    # só aparece na rodada seguinte, de hora em hora).
+    resp = requests.get(url, headers={
+        "Cache-Control": "no-cache, max-age=0",
+        "Pragma": "no-cache",
+    }, timeout=60)
     resp.raise_for_status()
     resp.encoding = "utf-8"
     return resp.text
