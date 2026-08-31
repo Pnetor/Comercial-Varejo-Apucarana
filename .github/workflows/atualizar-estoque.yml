@@ -7,8 +7,16 @@ on:
     # 08:30 BRT = 11:30 UTC, depois de hora em hora até 20:30 BRT (23:30 UTC).
     - cron: '30 11-23 * * *'
   repository_dispatch:
-    types: [estoque-atualizado] # disparado pelo Apps Script da Planilha Google
-  workflow_dispatch: # permite rodar manualmente pelo botão "Run workflow" no GitHub
+    # Canal alternativo, hoje SEM USO: o Apps Script da planilha dispara pelo
+    # workflow_dispatch (endpoint /actions/workflows/atualizar-estoque.yml/
+    # dispatches), não por aqui. Fica disponível caso algum outro sistema
+    # precise avisar o painel por este caminho.
+    types: [estoque-atualizado]
+  workflow_dispatch:
+    # Dois caminhos usam isso: o botão "Run workflow" aqui no GitHub e o
+    # Apps Script da planilha. O Apps Script não manda inputs, então
+    # "forcar_validacao" fica no padrão false - a trava continua valendo nos
+    # disparos da planilha, e só forçar na mão ignora ela.
     inputs:
       forcar_validacao:
         description: 'Forçar publicação mesmo com queda grande (marcar só quando a queda é real, não erro de planilha)'
