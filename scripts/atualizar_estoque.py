@@ -3005,8 +3005,16 @@ def main():
 
     validades = {}
     if VALIDADES_CSV_URL:
-        validades_csv_text = baixar_csv(VALIDADES_CSV_URL)
-        validades = carregar_validades(validades_csv_text)
+        try:
+            validades_csv_text = baixar_csv(VALIDADES_CSV_URL)
+            validades = carregar_validades(validades_csv_text)
+        except Exception as e:
+            # Mesma lógica de programação: uma falha aqui (link expirado,
+            # planilha despublicada, erro temporário do Google) não pode
+            # travar estoque/preços/pedidos, que não têm nada a ver com
+            # validades - só avisa e segue sem o botão "ver validades"
+            # atualizado dessa vez.
+            print(f"AVISO - falha ao carregar validades: {e}")
 
     programacao = {}
     nomes_produto_programacao = {}
