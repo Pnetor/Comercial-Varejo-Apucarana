@@ -16,6 +16,13 @@ on:
         default: false
         required: false
 
+concurrency:
+  # Evita duas rodadas rodando ao mesmo tempo (ex: edição na planilha e um
+  # "Run workflow" manual quase juntos) - a segunda espera a primeira
+  # terminar em vez de dar "push rejeitado" por causa de commit conflitante.
+  group: atualizar-estoque
+  cancel-in-progress: false
+
 jobs:
   atualizar:
     runs-on: ubuntu-latest
@@ -65,5 +72,25 @@ jobs:
             echo "Nada mudou, sem commit."
           else
             git commit -m "Atualização automática - $(date '+%d/%m/%Y %H:%M')"
-            git push
+            # Se alguém deu push no repositório entre o checkout e agora
+            # (outra rodada, ou um commit manual), o push simples seria
+            # rejeitado ("fetch first"). Busca o que há de novo e reaplica
+            # esse commit por cima antes de tentar de novo, com algumas
+            # tentativas pra cobrir corrida com outra rodada em paralelo.
+            tentativas=0
+            ate_conseguir=1
+            while [ $ate_conseguir -ne 0 ] && [ $tentativas -lt 5 ]; do
+              if git push; then
+                ate_conseguir=0
+              else
+                tentativas=$((tentativas + 1))
+                echo "Push rejeitado, tentativa $tentativas - buscando mudanças novas e tentando de novo..."
+                git fetch origin main
+                git rebase origin/main
+              fi
+            done
+            if [ $ate_conseguir -ne 0 ]; then
+              echo "Não consegui dar push depois de várias tentativas - verifique o repositório manualmente."
+              exit 1
+            fi
           fi
