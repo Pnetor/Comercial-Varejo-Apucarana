@@ -2831,6 +2831,10 @@ LIMITE_QUEDA = 0.5
 # Abaixo desse total anterior, a checagem de queda não faz sentido sozinha
 # (poucos itens oscilam bastante por natureza - ex: 2 vendedores virando 1).
 MINIMO_PARA_CHECAR_QUEDA = 5
+# Só em PEDIDOS: abaixo dessa quantidade de vendedores restantes, a queda
+# deixa de ser "movimento normal" e passa a ter cara de planilha cortada -
+# aí sim bloqueia a publicação (acima disso é só aviso, ver validar_pedidos).
+MINIMO_PLAUSIVEL_PEDIDOS = 3
 # Salto de preço maior que isso (pra mais ou pra menos) vira aviso.
 LIMITE_SALTO_PRECO = 0.5
 
@@ -2975,13 +2979,32 @@ def validar_pedidos(pedidos, html_atual):
             "provavelmente o link em GSHEET_PEDIDOS_CSV_URL está errado"
         ])
 
+    avisos = []
+
+    # Diferente de estoque e preços (que mudam devagar), a quantidade de
+    # vendedores COM PEDIDO EM ABERTO oscila muito por natureza do negócio:
+    # basta um dia de faturamento/carregamento forte pra metade dos pedidos
+    # sair da planilha de uma vez. Por isso aqui a queda grande NÃO bloqueia
+    # a publicação - só vira aviso no log. Bloqueia mesmo só quando o
+    # resultado é implausível de verdade (planilha vazia, checado acima, ou
+    # sobrou quase nada vindo de uma base bem maior - aí sim tem cara de
+    # exportação parcial/planilha cortada no meio).
     base = _contar_vendedores_pedidos(html_atual)
     if not FORCAR_VALIDACAO and base >= MINIMO_PARA_CHECAR_QUEDA and len(pedidos) < base * LIMITE_QUEDA:
-        raise ErroValidacao([
+        if len(pedidos) < MINIMO_PLAUSIVEL_PEDIDOS:
+            raise ErroValidacao([
+                f"sobraram só {len(pedidos)} vendedor(es) na planilha de "
+                f"pedidos, vindo de {base} - isso é pouco demais pra ser "
+                "movimento normal, parece planilha cortada no meio ou "
+                "exportação incompleta"
+            ])
+        avisos.append(
             f"o número de vendedores caiu de {base} pra {len(pedidos)} "
             f"(mais de {int(LIMITE_QUEDA * 100)}%) de uma rodada pra outra - "
-            "parece planilha incompleta"
-        ])
+            "publiquei assim mesmo (queda grande em pedidos em aberto é "
+            "normal quando muita carga fatura de uma vez), mas vale conferir "
+            "se a planilha de pedidos está completa"
+        )
 
     invalidos = 0
     for info in pedidos.values():
@@ -2991,7 +3014,6 @@ def validar_pedidos(pedidos, html_atual):
             except ValueError:
                 invalidos += 1
 
-    avisos = []
     if invalidos:
         avisos.append(f"{invalidos} pedido(s) com valor total inválido (não numérico)")
     return avisos
