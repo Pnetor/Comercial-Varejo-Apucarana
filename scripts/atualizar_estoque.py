@@ -2819,10 +2819,12 @@ SENHAS_INICIAIS = {
 def atualizar_pedidos_html(html, novos_dados):
     """Reconstrói o DATA do painel de pedidos, preservando as senhas já
     cadastradas no arquivo (a planilha não tem senha, isso é fixo no HTML).
-    Marca vendedores que aparecem pela primeira vez com "novo": true, pro
-    painel destacar e oferecer a opção de definir a senha inicial - essa
-    marcação fica valendo até alguém dispensar (no navegador) ou até ela
-    ser removida manualmente daqui."""
+    Marca com "novo": true o vendedor que ainda está com a senha padrão
+    ("0000"), pro painel mostrar o selo "VENDEDOR NOVO". O selo sai sozinho
+    na primeira atualização depois que a senha real for cadastrada (em
+    SENHAS_INICIAIS aqui embaixo, ou direto no DATA do HTML) - assim nenhum
+    vendedor novo passa batido com a carteira aberta, e ninguém precisa
+    "dispensar" o aviso na mão."""
     m = re.search(r"const DATA = (\{.*?\});", html, re.S)
     if not m:
         return html
@@ -2830,23 +2832,30 @@ def atualizar_pedidos_html(html, novos_dados):
 
     novo_data = {}
     for vendedor, info in novos_dados.items():
-        vendedor_existia = vendedor in data_atual
         senha_atual = data_atual.get(vendedor, {}).get("senha", "0000")
         # SENHAS_INICIAIS só "vence" enquanto a senha no site ainda for o
         # padrão "0000" - depois que alguém define uma senha real, ela é
         # definitiva (o script nunca mais sobrescreve por conta própria).
         senha_final = senha_atual if senha_atual != "0000" else SENHAS_INICIAIS.get(vendedor, senha_atual)
-        era_novo_antes = data_atual.get(vendedor, {}).get("novo", False)
+        # O selo "VENDEDOR NOVO" é simplesmente "ainda está sem senha
+        # própria": vale pra quem acabou de aparecer (nasce com "0000") e
+        # cai sozinho na rodada seguinte ao cadastro da senha real. Não
+        # depende de ninguém dispensar no navegador.
         novo_data[vendedor] = {
             "cod_vendedor": info["cod_vendedor"],
             "senha": senha_final,
-            "novo": (not vendedor_existia) or era_novo_antes,
+            "novo": senha_final == "0000",
             "pedidos": info["pedidos"],
         }
     # mantém vendedores antigos que não vieram na planilha nova (sem pedidos novos)
     for vendedor, info in data_atual.items():
         if vendedor not in novo_data:
-            novo_data[vendedor] = {**info, "pedidos": []}
+            novo_data[vendedor] = {
+                **info,
+                "pedidos": [],
+                # mesma regra do selo: sem senha própria ainda = continua "novo"
+                "novo": info.get("senha", "0000") == "0000",
+            }
 
     novo_data_str = json.dumps(novo_data, ensure_ascii=False)
     new_html, n = re.subn(
