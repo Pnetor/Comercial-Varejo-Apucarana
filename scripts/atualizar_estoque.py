@@ -2130,7 +2130,11 @@ def atualizar_html(html, data, validades=None, linhas_brutas=None, programacao=N
     # programação de carga (sem estoque cadastrado ainda/mais) - esses
     # últimos nascem "SEM ESTOQUE", só pra existir um card clicável com o
     # botão "🚚 programação". ──
-    html, _ = inserir_cards_novos(html, data, linhas_brutas, programacao, nomes_produto_programacao)
+    html, criados_agora = inserir_cards_novos(html, data, linhas_brutas, programacao, nomes_produto_programacao)
+    # Códigos que nasceram NESTA rodada: são os únicos que mantêm o selo
+    # "NOVO" quando o laço abaixo reescreve a classe do card. Qualquer card
+    # que já existia perde o selo (ele vale por uma atualização só).
+    criados_agora = set(criados_agora)
 
     card_starts = [m.start() for m in re.finditer(r'<div class="card[^"]*" data-name=', html)]
     card_starts.append(len(html))
@@ -2249,10 +2253,11 @@ def atualizar_html(html, data, validades=None, linhas_brutas=None, programacao=N
         was_nostock = 'data-status="no-stock"' in block
         classe_atual_m = re.search(r'<div class="card ([^"]*)" data-name=', block)
         tinha_has_obs = classe_atual_m and "has-obs" in classe_atual_m.group(1)
-        # "new-item" (destaque de item novo, ver montar_card_novo_html) precisa
-        # sobreviver às trocas de status abaixo - sem isso, a próxima
-        # sincronização de saldo apagaria o destaque no primeiro ciclo.
-        tinha_new_item = classe_atual_m and "new-item" in classe_atual_m.group(1)
+        # O selo "NOVO" (classe "new-item", ver montar_card_novo_html) vale
+        # por UMA atualização só: fica apenas nos cards criados nesta rodada.
+        # Card que já existia com o selo perde ele aqui - o produto apareceu
+        # na atualização anterior, então não é mais novidade.
+        tinha_new_item = code in criados_agora
         sufixo_new_item = " new-item" if tinha_new_item else ""
         if val and val > 0:
             block = re.sub(
